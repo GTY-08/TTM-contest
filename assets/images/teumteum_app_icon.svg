@@ -1,0 +1,8 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">틈틈 앱 아이콘</title>
+  <desc id="desc">연한 민트 배경 위에 ㅌㅌ 심볼을 배치한 틈틈 앱 아이콘</desc>
+  <rect width="512" height="512" rx="96" fill="#DDF1E9"/>
+  <g transform="translate(62 64) scale(0.76)">
+    <path d="M112 64H218Q250 64 250 96V134Q250 166 218 166H190Q172 166 172 184Q172 202 190 202H322Q340 202 340 184Q340 166 322 166H294Q262 166 262 134V96Q262 64 294 64H400Q432 64 432 96V354Q432 386 400 386H294Q262 386 262 354V316Q262 284 294 284H322Q340 284 340 266Q340 246 322 246H190Q172 246 172 266Q172 284 190 284H218Q250 284 250 316V354Q250 386 218 386H112Q80 386 80 354V96Q80 64 112 64Z" fill="#38B27C"/>
+  </g>
+</svg>

@@ -1,0 +1,185 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 매칭·요청 위치 좌표 수집을 위한 위치 권한. 사용 시점에 런타임 권한 요청. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <application
+        android:label="@string/app_name"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_ttm" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Supabase 이메일 확인·비밀번호 재설정 리다이렉트 (ttm://auth/callback) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="ttm"
+                    android:host="auth"
+                    android:pathPrefix="/callback" />
+            </intent-filter>
+            <!-- 홈 위젯 딥링크 (ttm://app/request/new[?taskType=...]) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="ttm"
+                    android:host="app" />
+            </intent-filter>
+            <!-- Flutter 딥링크 라우팅 활성화 -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="true" />
+        </activity>
+
+        <!-- 심부름 맡기기 소형 위젯 (2×2) -->
+        <receiver
+            android:name=".widget.TtmRequestSmallWidgetReceiver"
+            android:exported="true"
+            android:label="@string/ttm_widget_small_desc">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ttm_request_widget_small_info" />
+        </receiver>
+
+        <!-- 심부름 맡기기 중형 위젯 (4×2) -->
+        <receiver
+            android:name=".widget.TtmRequestMediumWidgetReceiver"
+            android:exported="true"
+            android:label="@string/ttm_widget_medium_desc">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ttm_request_widget_medium_info" />
+        </receiver>
+
+        <!-- 주변 심부름 위젯 (4×2) -->
+        <receiver
+            android:name=".widget.TtmBrowseWidgetReceiver"
+            android:exported="true"
+            android:label="@string/ttm_widget_browse_desc">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ttm_browse_widget_info" />
+        </receiver>
+
+        <!-- 진행 중 심부름 포그라운드 서비스 노티피케이션 -->
+        <service
+            android:name=".service.ActiveErrandService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
+        <!-- 활동 ON/OFF 소형 위젯 (2×2) -->
+        <receiver
+            android:name=".widget.TtmActivitySmallWidgetReceiver"
+            android:exported="true"
+            android:label="@string/ttm_widget_activity_small_desc">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.ttm.ttm_app.ACTIVITY_WIDGET_TICK" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ttm_activity_widget_small_info" />
+        </receiver>
+
+        <!-- 활동 ON/OFF 중형 위젯 (4×2) -->
+        <receiver
+            android:name=".widget.TtmActivityMediumWidgetReceiver"
+            android:exported="true"
+            android:label="@string/ttm_widget_activity_medium_desc">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ttm_activity_widget_medium_info" />
+        </receiver>
+
+        <!-- 진행중/지원한 작업 목록 위젯 (4×2) -->
+        <receiver
+            android:name=".widget.TtmWorkWidgetReceiver"
+            android:exported="true"
+            android:label="@string/ttm_widget_work_desc">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ttm_work_widget_info" />
+        </receiver>
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Ttm.UCrop" />
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>

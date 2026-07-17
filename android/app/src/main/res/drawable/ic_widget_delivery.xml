@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Box truck: cargo box -->
+    <path
+        android:pathData="M14.5 16.5L3.2 16.5C2.81 16.5 2.5 16.19 2.5 15.8L2.5 7.2C2.5 6.81 2.81 6.5 3.2 6.5L14.5 6.5Z"
+        android:strokeColor="#FF15803F"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- Cab with slanted windshield -->
+    <path
+        android:pathData="M14.5 9L17.9 9C18.29 9 18.65 9.21 18.84 9.55L21.05 13.4C21.16 13.6 21.22 13.82 21.22 14.05L21.22 15.8C21.22 16.19 20.91 16.5 20.52 16.5L14.5 16.5"
+        android:strokeColor="#FF15803F"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- Wheels -->
+    <path
+        android:pathData="M5.4 17.7a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"
+        android:strokeColor="#FF15803F"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent" />
+    <path
+        android:pathData="M15.6 17.7a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"
+        android:strokeColor="#FF15803F"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent" />
+</vector>

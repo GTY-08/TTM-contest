@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">틈틈</string>
+    <string name="ttm_widget_small_desc">틈틈 심부름 맡기기 (소형)</string>
+    <string name="ttm_widget_medium_desc">틈틈 심부름 맡기기 (중형)</string>
+    <string name="ttm_widget_label_delivery">배달</string>
+    <string name="ttm_widget_label_purchase">구매</string>
+    <string name="ttm_widget_label_care">돌봄</string>
+    <string name="ttm_widget_label_waiting">대기</string>
+    <string name="ttm_widget_browse_desc">틈틈 주변 심부름</string>
+    <string name="ttm_widget_work_desc">틈틈 내 작업</string>
+    <string name="ttm_widget_activity_small_desc">틈틈 활동 ON/OFF (소형)</string>
+    <string name="ttm_widget_activity_medium_desc">틈틈 활동 ON/OFF (중형)</string>
+</resources>

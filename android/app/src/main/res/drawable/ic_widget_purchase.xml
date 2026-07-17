@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Shopping bag body -->
+    <path
+        android:pathData="M5.3 7.5L18.7 7.5L17.95 19.15C17.87 20.2 17 21 15.95 21L8.05 21C7 21 6.13 20.2 6.05 19.15Z"
+        android:strokeColor="#FF15803F"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- Handle -->
+    <path
+        android:pathData="M8.8 7.5L8.8 6.2C8.8 4.43 10.23 3 12 3C13.77 3 15.2 4.43 15.2 6.2L15.2 7.5"
+        android:strokeColor="#FF15803F"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+</vector>

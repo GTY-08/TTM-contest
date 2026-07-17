@@ -1,0 +1,123 @@
+name: ttm_app
+description: "Tteumtteum - real-time short errand matching app"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Supabase (backend / auth / realtime / DB)
+  supabase_flutter: ^2.5.6
+  app_links: ^7.0.0
+  jwt_decode: ^0.3.1
+  gotrue: ^2.20.0
+  postgrest: ^2.7.0
+
+  # Routing
+  go_router: ^14.2.0
+
+  # UI / Design
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
+
+  # Geolocation / Maps
+  geolocator: ^12.0.0
+  flutter_naver_map: ^1.2.2
+
+  # Storage / Utils
+  app_settings: ^5.1.1
+  shared_preferences: ^2.2.3
+  intl: ^0.19.0
+
+  # Push notifications (FCM)
+  firebase_core: ^3.3.0
+  firebase_messaging: ^15.0.4
+  flutter_local_notifications: ^18.0.1
+
+  # Image picking (profile photo)
+  image_picker: ^1.1.2
+  image_cropper: ^9.1.0
+
+  url_launcher: ^6.3.2
+
+  # Google Play 정기 구독 (프리미엄)
+  in_app_purchase: ^3.2.3
+  in_app_purchase_android: ^0.4.0
+
+  # Social login
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.1
+
+  # Environment variables (.env.local 로드)
+  flutter_dotenv: ^6.0.1
+
+  firebase_crashlytics: ^4.3.10
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/images/
+    - assets/images/onboarding/ob_map.svg
+    - assets/images/onboarding/ob_flow.svg
+    - assets/images/onboarding/ob_trust.svg
+    # 개발용: 모바일 번들에 포함됨. 시크릿(토스 sk 등)은 여기 넣지 말 것.
+    - .env.local
+
+  fonts:
+    # 제목·숫자·버튼 용. Pretendard 9개 weight (100 ~ 900).
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Thin.otf
+          weight: 100
+        - asset: assets/fonts/Pretendard-ExtraLight.otf
+          weight: 200
+        - asset: assets/fonts/Pretendard-Light.otf
+          weight: 300
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Pretendard-ExtraBold.otf
+          weight: 800
+        - asset: assets/fonts/Pretendard-Black.otf
+          weight: 900
+    # 본문 전용. SUIT 9개 weight. Heavy는 900으로 매핑.
+    - family: SUIT
+      fonts:
+        - asset: assets/fonts/SUIT-Thin.otf
+          weight: 100
+        - asset: assets/fonts/SUIT-ExtraLight.otf
+          weight: 200
+        - asset: assets/fonts/SUIT-Light.otf
+          weight: 300
+        - asset: assets/fonts/SUIT-Regular.otf
+          weight: 400
+        - asset: assets/fonts/SUIT-Medium.otf
+          weight: 500
+        - asset: assets/fonts/SUIT-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/SUIT-Bold.otf
+          weight: 700
+        - asset: assets/fonts/SUIT-ExtraBold.otf
+          weight: 800
+        - asset: assets/fonts/SUIT-Heavy.otf
+          weight: 900
