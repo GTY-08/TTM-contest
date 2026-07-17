@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>계정 삭제 | 틈틈</title>
+  <meta name="description" content="틈틈(TTM) 계정 삭제 요청 페이지">
+  <link rel="canonical" href="https://www.ttmttm.com/delete-account">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/static/woff2/SUIT.css">
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;background:#f8f7f4;color:#1f2933;font-family:'SUIT','Pretendard',system-ui,sans-serif;line-height:1.65}
+    a{color:#0b7a75;text-decoration:none}
+    .shell{max-width:760px;margin:0 auto;padding:28px 20px 72px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}
+    .brand{display:flex;align-items:center;gap:10px;font-family:'Pretendard',system-ui,sans-serif;font-size:20px;font-weight:800;color:#111827}
+    .brand img{width:38px;height:38px}
+    .home{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(11,122,117,.22);border-radius:999px;padding:9px 15px;background:#fff;font-size:14px;font-weight:800;box-shadow:0 6px 20px rgba(11,122,117,.08)}
+    .card{padding:34px 32px;border:1px solid #e5e7eb;border-radius:28px;background:#fff;box-shadow:0 16px 46px rgba(15,23,42,.06)}
+    h1{margin:0 0 12px;font-family:'Pretendard',system-ui,sans-serif;font-size:clamp(30px,5vw,42px);line-height:1.15;letter-spacing:-.04em}
+    p{margin:0 0 14px;color:#4b5563}
+    .notice{margin:18px 0;padding:16px;border-radius:18px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+    .actions{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+    button{width:100%;border:0;border-radius:999px;padding:14px 18px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .primary{background:#0b7a75;color:#fff;box-shadow:0 10px 24px rgba(11,122,117,.22)}
+    .danger{background:#be123c;color:#fff;box-shadow:0 10px 24px rgba(190,18,60,.18)}
+    .ghost{background:#fff;color:#0b7a75;border:1px solid rgba(11,122,117,.28)}
+    input{width:100%;border:1px solid #d1d5db;border-radius:14px;padding:13px 14px;font-family:inherit;font-size:15px;margin-top:8px}
+    label{display:block;margin-top:14px;font-size:13px;font-weight:800;color:#374151}
+    .message{margin-top:16px;padding:14px;border-radius:16px;background:#eef2ff;color:#3730a3}
+    .message.error{background:#fff1f2;color:#be123c}
+    .message.success{background:#ecfdf5;color:#047857}
+    [hidden]{display:none!important}
+    @media(max-width:640px){.top{align-items:flex-start;flex-direction:column}.card{padding:26px 20px;border-radius:22px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="top">
+      <a class="brand" href="/" aria-label="틈틈 홈">
+        <img src="/assets/logo-mark.svg" alt="">
+        <span>틈틈</span>
+      </a>
+      <a class="home" href="/">홈으로 돌아가기</a>
+    </div>
+
+    <section class="card">
+      <h1>계정 삭제</h1>
+      <p>Google Play 정책에 따라 웹에서도 틈틈 계정 삭제를 요청할 수 있습니다.</p>
+      <p>로그인 후 계정 삭제를 진행하면 프로필 개인정보는 비식별화되고, 해당 계정으로 다시 로그인할 수 없습니다.</p>
+      <div class="notice">정산, 신고, 분쟁 대응, 법령 준수를 위해 필요한 거래 기록은 관련 법령과 개인정보처리방침에 따라 보관될 수 있습니다.</div>
+
+      <div id="signedOut">
+        <div class="actions">
+          <button class="primary" type="button" id="googleSignIn">Google로 로그인</button>
+        </div>
+        <label>이메일
+          <input type="email" id="email" autocomplete="email" placeholder="email@example.com">
+        </label>
+        <label>비밀번호
+          <input type="password" id="password" autocomplete="current-password" placeholder="비밀번호">
+        </label>
+        <div class="actions">
+          <button class="ghost" type="button" id="emailSignIn">이메일로 로그인</button>
+        </div>
+      </div>
+
+      <div id="signedIn" hidden>
+        <p><strong id="accountLabel">로그인됨</strong></p>
+        <div class="actions">
+          <button class="danger" type="button" id="deleteAccount">계정 삭제</button>
+          <button class="ghost" type="button" id="signOut">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="message" id="message" hidden></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const message = document.getElementById('message');
+    const signedOut = document.getElementById('signedOut');
+    const signedIn = document.getElementById('signedIn');
+    const accountLabel = document.getElementById('accountLabel');
+    let supabase;
+
+    function setMessage(text = '', kind = '') {
+      message.textContent = text;
+      message.className = `message${kind ? ` ${kind}` : ''}`;
+      message.hidden = !text;
+    }
+
+    async function refresh() {
+      const { data: { session } } = await supabase.auth.getSession();
+      signedOut.hidden = !!session;
+      signedIn.hidden = !session;
+      accountLabel.textContent = session?.user?.email || '로그인됨';
+    }
+
+    async function init() {
+      const response = await fetch('/api/auth-config', { headers: { Accept: 'application/json' } });
+      const config = await response.json();
+      if (!response.ok || !config.ok) throw new Error('auth_config_missing');
+      supabase = createClient(config.supabaseUrl, config.publishableKey, {
+        auth: { persistSession: true, detectSessionInUrl: true, autoRefreshToken: true },
+      });
+      supabase.auth.onAuthStateChange(() => setTimeout(refresh, 0));
+      await refresh();
+    }
+
+    document.getElementById('googleSignIn').addEventListener('click', async () => {
+      setMessage();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href },
+      });
+      if (error) setMessage('Google 로그인을 시작하지 못했습니다.', 'error');
+    });
+
+    document.getElementById('emailSignIn').addEventListener('click', async () => {
+      setMessage();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setMessage('이메일 또는 비밀번호를 확인해 주세요.', 'error');
+        return;
+      }
+      await refresh();
+    });
+
+    document.getElementById('signOut').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      await refresh();
+    });
+
+    document.getElementById('deleteAccount').addEventListener('click', async () => {
+      const ok = window.confirm('계정을 삭제할까요? 삭제 후에는 다시 로그인할 수 없습니다.');
+      if (!ok) return;
+      setMessage();
+      const button = document.getElementById('deleteAccount');
+      button.disabled = true;
+      try {
+        const { data, error } = await supabase.functions.invoke('delete-account');
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.reason || 'delete_failed');
+        await supabase.auth.signOut();
+        await refresh();
+        setMessage('계정이 삭제되었습니다.', 'success');
+      } catch (_error) {
+        setMessage('계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    init().catch(() => setMessage('계정 삭제 페이지를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.', 'error'));
+  </script>
+</body>
+</html>

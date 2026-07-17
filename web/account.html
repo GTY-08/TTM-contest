@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계정 | 틈틈 TTM</title>
+<meta name="description" content="틈틈 웹 계정 가입, 로그인, 본인인증, 계정 삭제 페이지입니다.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body class="account-page">
+<header class="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="/"><img src="/assets/logo-mark.svg" alt="">틈틈</a>
+    <nav class="nav-links" aria-label="주요 메뉴">
+      <a href="/index.html">홈</a><a href="/about.html">앱 소개</a><a href="/notice.html">공지사항</a><a href="/support.html">고객센터</a><a class="active" href="/account.html">계정</a>
+    </nav>
+    <div class="nav-actions"><span class="btn btn-ghost" id="navAccountLabel">로그인</span></div>
+  </div>
+</header>
+<main class="page-main">
+  <div class="wrap">
+    <section class="page-title reveal">
+      <span class="eyebrow">계정</span>
+      <h1>웹과 앱에서 같은 틈틈 계정을 사용합니다</h1>
+      <p>웹에서는 회원가입, 로그인, 본인인증, 계정 삭제를 처리합니다. 계좌 연결은 웹 가입 흐름에 포함하지 않습니다.</p>
+    </section>
+
+    <div class="account-modal" id="accountModal" aria-hidden="false">
+      <div class="account-panel" id="accountPanel" role="dialog" aria-modal="false" aria-labelledby="accountTitle">
+        <div class="account-head">
+          <div>
+            <h2 id="accountTitle">틈틈 계정</h2>
+            <p>웹과 앱에서 같은 계정을 사용합니다.</p>
+          </div>
+          <button class="account-close" type="button" id="accountClose" aria-label="닫기">×</button>
+        </div>
+        <div class="account-message" id="accountMessage" hidden></div>
+
+        <section data-auth-view="login" hidden>
+          <div class="account-brand">
+            <div class="account-brand-logo"><img src="/assets/logo-mark.svg" alt=""><span>틈틈</span></div>
+            <p>주변 요청을 찾거나 직접 맡길 계정을 만듭니다.</p>
+          </div>
+          <div class="account-choice">
+            <button class="btn btn-primary" type="button" data-auth-go="signup">틈틈 계정 생성</button>
+            <button class="btn btn-ghost" type="button" data-auth-go="email-login">로그인</button>
+          </div>
+          <div class="auth-divider">또는</div>
+          <div class="account-choice">
+            <button class="social-auth kakao" type="button" data-oauth-provider="kakao"><img src="/assets/social_kakao.svg" alt="">카카오로 계속</button>
+            <button class="social-auth google" type="button" data-oauth-provider="google"><img src="/assets/social_google.svg" alt="">Google로 계속</button>
+          </div>
+        </section>
+
+        <section data-auth-view="email-login" hidden>
+          <button class="account-back" type="button" data-auth-go="login">← 다른 방법으로 로그인</button>
+          <div class="account-step"><div><h3>로그인</h3><p>앱에서 사용하던 이메일 계정으로 로그인할 수 있습니다.</p></div></div>
+          <form class="account-form" id="loginForm">
+            <label class="account-field"><span>이메일</span><input type="email" name="email" autocomplete="email" required></label>
+            <label class="account-field"><span>비밀번호</span><input type="password" name="password" autocomplete="current-password" required></label>
+            <button class="account-link" type="button" id="resetPassword">비밀번호 재설정</button>
+            <div class="account-actions"><button class="btn btn-primary" type="submit">로그인</button></div>
+          </form>
+        </section>
+
+        <section data-auth-view="signup" hidden>
+          <button class="account-back" type="button" data-auth-go="login">← 다른 방법으로 시작</button>
+          <div class="account-step"><div><h3>틈틈 계정 생성</h3><p>필수 약관에 동의하고 이메일 계정을 만들어 주세요.</p></div></div>
+          <form class="account-form" id="signupForm">
+            <label class="account-field"><span>이메일</span><input type="email" name="email" autocomplete="email" required></label>
+            <label class="account-field"><span>비밀번호</span><input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
+            <label class="account-field"><span>비밀번호 확인</span><input type="password" name="passwordConfirm" minlength="8" autocomplete="new-password" required></label>
+            <div class="account-actions"><button class="btn btn-primary" type="submit">인증 메일 받기</button></div>
+          </form>
+        </section>
+
+        <section data-auth-view="legal" hidden>
+          <div class="account-step">
+            <div>
+              <h3>약관 동의</h3>
+              <p>본인인증을 시작하기 전에 필수 약관을 확인해 주세요.</p>
+            </div>
+          </div>
+          <form class="account-form" id="legalForm">
+            <label class="account-check">
+              <input type="checkbox" name="terms" required>
+              <span><a href="/terms.html" target="_blank" rel="noopener">이용약관</a>에 동의합니다. (필수)</span>
+            </label>
+            <label class="account-check">
+              <input type="checkbox" name="privacy" required>
+              <span><a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>에 동의합니다. (필수)</span>
+            </label>
+            <label class="account-check">
+              <input type="checkbox" name="marketing">
+              <span>혜택 및 소식 수신에 동의합니다. (선택)</span>
+            </label>
+            <div class="account-actions"><button class="btn btn-primary" type="submit">동의하고 본인인증 진행</button></div>
+          </form>
+        </section>
+
+        <section class="account-step" data-auth-view="identity" hidden>
+          <div class="account-step-icon">✓</div>
+          <div><h3>본인인증</h3><p>한 사람당 하나의 계정만 만들 수 있도록 본인인증을 진행합니다.</p></div>
+          <div class="account-note">계좌는 연결하지 않습니다. 실제 결제, 에스크로, 정산 기능은 추가 예정입니다.</div>
+          <div class="identity-methods" role="radiogroup" aria-label="본인인증 방식 선택">
+            <button class="identity-method active" type="button" data-identity-method="pass" role="radio" aria-checked="true"><strong>PASS를 이용한 본인인증</strong><span>휴대폰 본인확인 방식</span></button>
+            <button class="identity-method" type="button" data-identity-method="bankCertificate" role="radio" aria-checked="false"><strong>은행인증서를 통한 본인인증</strong><span>기존 인증서 방식</span></button>
+          </div>
+          <div class="account-actions">
+            <button class="btn btn-primary" type="button" id="identityStart">본인인증 시작</button>
+            <button class="btn btn-ghost" type="button" id="identityRefresh">인증 완료 확인</button>
+            <button class="btn btn-ghost" type="button" data-account-sign-out>로그아웃</button>
+          </div>
+        </section>
+
+        <section data-auth-view="profile" hidden>
+          <div class="account-step"><div><h3>회원 정보</h3><p>앱에서 사용할 닉네임을 입력하면 가입이 완료됩니다.</p></div></div>
+          <form class="account-form" id="profileForm">
+            <label class="account-field"><span>닉네임</span><input type="text" name="nickname" minlength="2" maxlength="20" autocomplete="nickname" required></label>
+            <div class="account-note">필수 약관 동의와 본인인증이 완료되었습니다.</div>
+            <div class="account-actions"><button class="btn btn-primary" type="submit">가입 완료</button></div>
+          </form>
+        </section>
+
+        <section data-auth-view="complete" hidden>
+          <div class="profile-summary">
+            <h3><span id="accountNickname">회원</span>님, 가입이 완료되었습니다.</h3>
+            <p id="accountPayoutState">현재 앱은 가상 지갑 흐름을 사용합니다. 실제 결제와 정산은 추가 예정입니다.</p>
+          </div>
+          <div class="account-actions">
+            <button class="btn btn-ghost" type="button" data-account-sign-out>로그아웃</button>
+            <button class="account-danger" type="button" id="accountDelete">계정 삭제</button>
+          </div>
+        </section>
+
+        <section data-auth-view="recovery" hidden>
+          <div class="account-step"><div><h3>비밀번호 재설정</h3><p>새 비밀번호를 입력해 주세요.</p></div></div>
+          <form class="account-form" id="recoveryForm">
+            <label class="account-field"><span>새 비밀번호</span><input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
+            <label class="account-field"><span>새 비밀번호 확인</span><input type="password" name="passwordConfirm" minlength="8" autocomplete="new-password" required></label>
+            <div class="account-actions"><button class="btn btn-primary" type="submit">비밀번호 변경</button></div>
+          </form>
+        </section>
+
+        <section data-auth-view="unavailable" hidden>
+          <div class="unavailable">계정 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="footer"><div class="wrap footer-inner"><div class="footer-brand"><div class="footer-logo"><img src="/assets/logo-mark.svg" alt="">틈틈 TTM</div><div class="business"><span>상호명: 틈틈(TTM) · 대표자명: 권태영 · 사업자등록번호: 694-51-01072</span><span>전화: <a href="tel:01091492070">010-9149-2070</a> · 이메일: <a href="mailto:support@ttmttm.com">support@ttmttm.com</a></span></div></div><div class="footer-links"><a href="/privacy">개인정보처리방침</a><a href="/delete-account">계정 삭제</a><a href="/support.html">고객센터</a></div></div></footer>
+<script src="/site.js"></script>
+<script type="module" src="/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>공지사항 | 틈틈 TTM</title>
+<meta name="description" content="틈틈 서비스 공지사항과 업데이트 안내입니다.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="/"><img src="/assets/logo-mark.svg" alt="">틈틈</a>
+    <nav class="nav-links" aria-label="주요 메뉴">
+      <a href="/index.html">홈</a>
+      <a href="/about.html">앱 소개</a>
+      <a class="active" href="/notice.html">공지사항</a>
+      <a href="/support.html">고객센터</a>
+      <a href="/account.html">계정</a>
+    </nav>
+    <div class="nav-actions"><a class="btn btn-ghost" href="/account.html">로그인</a><a class="btn btn-primary" href="/account.html">시작하기</a></div>
+  </div>
+</header>
+
+<main class="page-main">
+  <div class="wrap">
+    <section class="hero-card reveal">
+      <div>
+        <span class="eyebrow">NOTICE</span>
+        <h1>긴 글 대신 핵심만 빠르게 보여줍니다</h1>
+        <p class="lead">업데이트, 점검, 정책 변경만 짧게 확인하세요.</p>
+      </div>
+      <div class="mini-map" aria-hidden="true">
+        <div class="mini-road"></div>
+        <div class="mini-pin one"></div>
+        <div class="mini-pin two"></div>
+      </div>
+    </section>
+
+    <section class="section reveal">
+      <span class="section-label">최근 공지</span>
+      <div id="noticeList" class="notice-list">
+        <div class="notice-empty">공지사항을 불러오는 중입니다.</div>
+      </div>
+      <div id="noticeStatus" class="status-line" role="status"></div>
+    </section>
+
+    <section id="noticeAdmin" class="section form-card admin-panel reveal" hidden>
+      <span class="section-label">관리자</span>
+      <h2>공지 작성</h2>
+      <form id="noticeForm" class="form-grid" autocomplete="off">
+        <label class="form-field full">제목
+          <input id="noticeTitle" name="title" maxlength="120" required placeholder="예: PASS 인증 점검 안내">
+        </label>
+        <label class="form-field full">요약
+          <input id="noticeSummary" name="summary" maxlength="180" placeholder="목록에 먼저 보이는 짧은 문장">
+        </label>
+        <label class="form-field full">본문
+          <textarea id="noticeBody" name="body" maxlength="5000" required placeholder="공지 내용을 입력하세요."></textarea>
+        </label>
+        <label class="form-field">상태
+          <select id="noticeStatusSelect" name="status">
+            <option value="published">바로 공개</option>
+            <option value="draft">임시 저장</option>
+          </select>
+        </label>
+        <div class="form-field">
+          <span>&nbsp;</span>
+          <button class="btn btn-primary" type="submit">공지 등록</button>
+        </div>
+      </form>
+      <div id="noticeAdminMessage" class="status-line" role="status"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap footer-inner"><div class="footer-brand"><div class="footer-logo"><img src="/assets/logo-mark.svg" alt="">틈틈 TTM</div><div class="business"><span>상호명: 틈틈(TTM) · 대표자명: 권태영 · 사업자등록번호: 694-51-01072</span><span>사업장 주소: 대구광역시 수성구 청수로 257 캐슬골드파크 3단지 1305동 401호</span><span>전화: <a href="tel:01091492070">010-9149-2070</a> · 이메일: <a href="mailto:support@ttmttm.com">support@ttmttm.com</a></span></div></div><div class="footer-links"><a href="/privacy">개인정보처리방침</a><a href="/delete-account">계정 삭제</a><a href="/support.html">고객센터</a></div></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/site.js"></script>
+<script src="/notice.js"></script>
+</body>
+</html>
