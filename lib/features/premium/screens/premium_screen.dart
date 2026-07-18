@@ -7,12 +7,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/providers/auth_providers.dart';
 import '../../../features/profile/profile_copy.dart';
-import '../../../features/settings/screens/settings_screen.dart';
-import '../../../features/settings/settings_copy.dart';
 import '../../../shared/widgets/ttm_button.dart';
 import '../../../shared/widgets/ttm_elevated_card.dart';
 
-/// 틈틈 프리미엄 — Play 구독 전에는 설정 테스트 토글 사용.
 class PremiumScreen extends ConsumerWidget {
   const PremiumScreen({super.key});
 
@@ -28,32 +25,35 @@ class PremiumScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(TtmSpacing.lg),
         children: [
           TtmElevatedCard(
-            padding: const EdgeInsets.all(TtmSpacing.lg),
+            padding: const EdgeInsets.all(TtmSpacing.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  SettingsCopy.premiumTestBannerTitle,
-                  style: TtmTypography.title.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  isPremium ? '프리미엄 이용 중' : '내가 만드는 운동 레이드',
+                  style: TtmTypography.display.copyWith(fontSize: 23),
                 ),
                 const SizedBox(height: TtmSpacing.sm),
                 Text(
-                  SettingsCopy.premiumTestBannerBody,
+                  isPremium
+                      ? '원하는 장소와 시간에 레이드를 만들고 참가자를 운영할 수 있어요.'
+                      : '함께 운동할 사람을 직접 모으고 활동 기록을 더 자세히 관리하세요.',
                   style: TtmTypography.body.copyWith(
-                    fontSize: 13,
                     color: colors.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: TtmSpacing.md),
-                TTMButton(
-                  label: '설정에서 프리미엄 모드 켜기',
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SettingsScreen(initialTab: 4),
-                    ),
+                const SizedBox(height: TtmSpacing.lg),
+                Text(
+                  TtmPremiumConstants.listPriceLabel,
+                  style: TtmTypography.moneyDisplay.copyWith(
+                    fontSize: 28,
+                    color: TtmColors.premiumGold,
+                  ),
+                ),
+                Text(
+                  '매월',
+                  style: TtmTypography.label.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -65,36 +65,32 @@ class PremiumScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isPremium ? '프리미엄 사용 중' : '프리미엄 혜택',
-                  style: TtmTypography.title.copyWith(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: TtmSpacing.sm),
-                Text(
-                  TtmPremiumConstants.listPriceLabel,
-                  style: TtmTypography.moneyDisplay.copyWith(
-                    fontSize: 28,
-                    color: TtmColors.premiumGold,
-                  ),
-                ),
+                Text('프리미엄 혜택', style: TtmTypography.headline),
                 const SizedBox(height: TtmSpacing.md),
-                _benefit('수수료 10% → 5%'),
-                _benefit('요청·작업 합산 동시 최대 3건'),
-                _benefit('닉네임 옆 골드 왕관 배지'),
+                _benefit('등록된 운동 장소에서 레이드 직접 개설'),
+                _benefit('참가 신청자 승인과 정원 관리'),
+                _benefit('레이드별 참가비와 취소 기준 설정'),
+                _benefit('누적 운동 시간과 활동 통계 확인'),
               ],
             ),
           ),
           const SizedBox(height: TtmSpacing.xl),
+          TTMButton(
+            label: isPremium ? '프리미엄 이용 중' : '프리미엄 시작하기',
+            onPressed: isPremium
+                ? null
+                : () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('프리미엄 가입은 순차적으로 제공될 예정이에요.')),
+                  ),
+          ),
+          const SizedBox(height: TtmSpacing.md),
           Text(
-            'Google Play 정기결제(${TtmPremiumConstants.listPriceLabel})는 '
-            '개발자 등록(만 18세) 후 연결할 예정이에요.',
+            '참가비는 레이드 완료 전까지 보관되며 취소 기준에 따라 반환됩니다.',
+            textAlign: TextAlign.center,
             style: TtmTypography.label.copyWith(
               fontSize: 11,
               color: colors.onSurfaceVariant,
-              height: 1.4,
+              height: 1.5,
             ),
           ),
         ],
@@ -104,10 +100,10 @@ class PremiumScreen extends ConsumerWidget {
 
   Widget _benefit(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: TtmSpacing.xs),
+      padding: const EdgeInsets.only(bottom: TtmSpacing.sm),
       child: Row(
         children: [
-          Icon(Icons.check_rounded, size: 18, color: TtmColors.primary),
+          const Icon(Icons.check_rounded, size: 18, color: TtmColors.primary),
           const SizedBox(width: TtmSpacing.sm),
           Expanded(
             child: Text(text, style: TtmTypography.body.copyWith(fontSize: 14)),

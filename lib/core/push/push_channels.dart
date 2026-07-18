@@ -16,4 +16,8 @@ abstract final class PushTypes {
   static const requestCompleted = 'request_completed';
   static const requestCancelled = 'request_cancelled';
   static const chatMessage = 'chat_message';
+  static const exerciseMatchOffer = 'exercise_match_offer';
+  static const exerciseMatchMatched = 'exercise_match_matched';
+  static const raidRecruitmentOffer = 'raid_recruitment_offer';
+  static const raidRecruitmentApplication = 'raid_recruitment_application';
 }

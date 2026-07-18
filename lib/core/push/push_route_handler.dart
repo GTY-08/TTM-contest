@@ -24,7 +24,9 @@ class PushNavigationIntent {
     if (route != null && route.contains('tab=notifications')) {
       tab = 2;
     }
-    if (pushType == 'worker_match_offer') {
+    if (pushType == 'worker_match_offer' ||
+        pushType == 'exercise_match_offer' ||
+        pushType == 'raid_recruitment_offer') {
       tab = 2;
     }
 

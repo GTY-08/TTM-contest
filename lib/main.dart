@@ -12,18 +12,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/env.dart';
-import 'core/match/waiting_request_recovery.dart';
 import 'core/push/push_route_handler.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/prefs.dart';
 import 'core/theme/app_theme.dart';
-import 'data/providers/active_errand_widget_provider.dart';
-import 'data/providers/activity_widget_providers.dart';
 import 'data/providers/auth_providers.dart';
 import 'data/providers/home_navigation_provider.dart';
 import 'data/providers/push_providers.dart';
 import 'data/providers/theme_providers.dart';
-import 'data/providers/worker_activity_providers.dart';
 
 bool _crashlyticsReady = false;
 
@@ -97,9 +93,6 @@ class TtmApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     ref.watch(fcmBootstrapProvider);
-    ref.watch(waitingRequestRecoveryProvider);
-    ref.watch(activeErrandWidgetSyncProvider);
-    ref.watch(activityWidgetSyncProvider);
 
     ref.listen<PushNavigationIntent?>(pendingPushNavigationProvider, (
       _,
@@ -139,9 +132,7 @@ class TtmApp extends ConsumerWidget {
       darkTheme: TtmTheme.dark,
       themeMode: themeMode,
       routerConfig: router,
-      builder: (context, child) {
-        return WorkerActivityBootstrap(child: child ?? const SizedBox.shrink());
-      },
+      builder: (context, child) => child ?? const SizedBox.shrink(),
     );
   }
 }

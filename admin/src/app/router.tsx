@@ -4,6 +4,7 @@ import { ProtectedAdminApp } from './App';
 import { AuditLogsPage } from '../pages/AuditLogsPage';
 import { CancelEventsPage } from '../pages/CancelEventsPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { ExerciseVenuesPage } from '../pages/ExerciseVenuesPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ReportDetailPage } from '../pages/ReportDetailPage';
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
     element: <ProtectedAdminApp />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'exercise-venues', element: <ExerciseVenuesPage /> },
       { path: 'requests', element: <RequestsPage /> },
       { path: 'requests/:id', element: <RequestDetailPage /> },
       { path: 'users', element: <UsersPage /> },

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/supabase_auth_session.dart';
 import 'ttm_page_transitions.dart';
-import '../../data/providers/activity_widget_providers.dart';
 import '../../data/providers/auth_providers.dart';
 import '../../features/auth/screens/email_login_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -20,6 +19,11 @@ import '../../features/match/screens/general_request_detail_screen.dart';
 import '../../features/match/screens/match_waiting_screen.dart';
 import '../../features/match/screens/request_create_screen.dart';
 import '../../features/premium/screens/premium_screen.dart';
+import '../../features/raid/screens/raid_chat_screen.dart';
+import '../../features/raid/screens/raid_detail_screen.dart';
+import '../../features/raid/screens/exercise_preferences_screen.dart';
+import '../../features/raid/screens/exercise_quick_chat_screen.dart';
+import '../../features/raid/screens/exercise_quick_match_screen.dart';
 import '../dev/dev_boot_screen.dart';
 
 /// 앱 전역 라우트 경로 상수.
@@ -37,6 +41,9 @@ class AppRoutes {
   /// 요청 생성·매칭 대기 화면 진입 경로의 공통 prefix.
   static const String requestRoot = '/request';
   static const String requestCreate = '$requestRoot/new';
+  static const String raidRoot = '/raid';
+  static const String quickMatch = '/quick-match';
+  static const String exercisePreferences = '/profile/exercise';
 
   static const String resetPassword = '/reset-password';
 
@@ -224,25 +231,75 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) {
           final tab = state.uri.queryParameters['tab'];
           final initialIndex = switch (tab) {
-            'request' => 1,
-            'find' => 2,
+            'create' || 'request' => 1,
+            'nearby' || 'find' => 2,
             'activity' => 3,
-            'wallet' => 4,
+            'reward' || 'wallet' => 4,
             'profile' => 5,
             _ => 0,
           };
-          // 활동 위젯 "직접 시간 설정" 딥링크 → 홈 진입 후 시간 설정 시트 오픈
-          if (state.uri.queryParameters['activitySheet'] == '1') {
-            Future.microtask(() {
-              ref.read(activityDurationSheetRequestProvider.notifier).state =
-                  true;
-            });
-          }
           return ttmFadeSlidePage(
             key: state.pageKey,
             child: HomeScreen(initialIndex: initialIndex),
           );
         },
+      ),
+      GoRoute(
+        path: '${AppRoutes.raidRoot}/:id',
+        name: 'raidDetail',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ttmFadeSlidePage(
+            key: state.pageKey,
+            child: RaidDetailScreen(raidId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.raidRoot}/:id/chat',
+        name: 'raidChat',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ttmFadeSlidePage(
+            key: state.pageKey,
+            child: RaidChatScreen(raidId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.quickMatch,
+        name: 'exerciseQuickMatch',
+        pageBuilder: (context, state) => ttmFadeSlidePage(
+          key: state.pageKey,
+          child: const ExerciseQuickMatchScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.quickMatch}/:id',
+        name: 'exerciseQuickMatchDetail',
+        pageBuilder: (context, state) => ttmFadeSlidePage(
+          key: state.pageKey,
+          child: const ExerciseQuickMatchScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.quickMatch}/:id/chat',
+        name: 'exerciseQuickMatchChat',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ttmFadeSlidePage(
+            key: state.pageKey,
+            child: ExerciseQuickChatScreen(quickMatchId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.exercisePreferences,
+        name: 'exercisePreferences',
+        pageBuilder: (context, state) => ttmFadeSlidePage(
+          key: state.pageKey,
+          child: const ExercisePreferencesScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.requestCreate,

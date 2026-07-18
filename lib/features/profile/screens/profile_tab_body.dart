@@ -69,6 +69,28 @@ class ProfileTabBody extends ConsumerWidget {
                 const TtmSectionHeader(title: '신뢰 정보'),
                 _TrustCard(user: user),
 
+                const TtmSectionHeader(title: '운동 설정'),
+                TtmElevatedCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: TtmSpacing.lg,
+                      vertical: TtmSpacing.sm,
+                    ),
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0x1F0B7A75),
+                      child: Icon(
+                        Icons.directions_run_rounded,
+                        color: TtmColors.primary,
+                      ),
+                    ),
+                    title: const Text('내 운동 조건'),
+                    subtitle: const Text('활동 지역 · 선호 종목 · 수준 · 가능한 시간'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => context.push(AppRoutes.exercisePreferences),
+                  ),
+                ),
+
                 // ── 활동 기록 ────────────────────────────────────
                 const TtmSectionHeader(title: '활동 기록'),
                 _ActivitySummaryCard(

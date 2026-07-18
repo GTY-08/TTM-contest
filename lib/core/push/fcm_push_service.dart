@@ -201,10 +201,14 @@ class FcmPushService {
   String _channelForType(String pushType) {
     switch (pushType) {
       case PushTypes.workerMatchOffer:
+      case PushTypes.exerciseMatchOffer:
+      case PushTypes.raidRecruitmentOffer:
         return PushChannels.matchOffer;
       case PushTypes.requesterMatched:
       case PushTypes.requesterMatchFailed:
       case PushTypes.requestCancelled:
+      case PushTypes.exerciseMatchMatched:
+      case PushTypes.raidRecruitmentApplication:
         return PushChannels.matchResult;
       case PushTypes.chatMessage:
         return PushChannels.message;

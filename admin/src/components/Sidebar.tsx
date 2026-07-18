@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 const navItems = [
   { to: '/', label: '대시보드', end: true },
+  { to: '/exercise-venues', label: '레이드 장소 관리' },
   { to: '/requests', label: '요청 관리' },
   { to: '/users', label: '사용자 관리' },
   { to: '/restrictions', label: '제재 관리' },
