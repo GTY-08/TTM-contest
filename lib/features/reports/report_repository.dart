@@ -134,6 +134,35 @@ class ReportRepository {
     });
   }
 
+  Future<void> submitRaidMessageReport({
+    required String raidId,
+    required String messageId,
+    required String category,
+    String? description,
+  }) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) throw StateError('not_authenticated');
+    await _moderateDescription(
+      description,
+      targetType: 'raid_message_report',
+      targetId: messageId,
+      requestId: raidId,
+    );
+
+    final raw = await _supabase.rpc(
+      'submit_raid_message_report',
+      params: {
+        'p_message_id': messageId,
+        'p_category': category,
+        'p_description': _cleanDescription(description),
+      },
+    );
+    if (raw is! Map || raw['ok'] != true) {
+      final reason = raw is Map ? raw['reason']?.toString() : null;
+      throw StateError(reason ?? 'report_submit_failed');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> fetchUserReports() async {
     final rows = await _supabase
         .from('user_reports')

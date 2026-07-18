@@ -29,4 +29,6 @@ abstract final class PushTypes {
   static const raidParticipantCancelled = 'raid_participant_cancelled';
   static const raidStarted = 'raid_started';
   static const raidApplicationMessage = 'raid_application_message';
+  static const raidGroupMessage = 'raid_group_message';
+  static const raidCompleted = 'raid_completed';
 }

@@ -13,10 +13,10 @@ import '../../../core/utils/display_nickname.dart';
 import '../../../core/utils/pedestrian_location.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/providers/auth_providers.dart';
-import '../../../shared/widgets/ttm_premium_nickname.dart';
 import '../../chat/models/chat_message.dart';
 import '../../chat/widgets/chat_message_bubble.dart';
-import '../../profile/widgets/profile_photo_change.dart';
+import '../../chat/widgets/chat_thread_header.dart';
+import '../../chat/widgets/counterpart_profile_sheet.dart';
 import '../models/exercise_matching_models.dart';
 import '../providers/raid_providers.dart';
 import '../widgets/quick_match_live_map.dart';
@@ -43,6 +43,7 @@ class _ExerciseQuickChatScreenState
   bool _pickingImage = false;
   bool _mapExpanded = true;
   bool _initialScrollDone = false;
+  bool _initialScrollScheduled = false;
   bool _forceScrollToEnd = false;
   int _lastMessageCount = 0;
 
@@ -66,9 +67,10 @@ class _ExerciseQuickChatScreenState
   Widget build(BuildContext context) {
     final uid = ref.watch(authUserIdProvider);
     final myProfile = ref.watch(myProfileProvider).valueOrNull;
-    final matchAsync = ref.watch(myQuickMatchProvider);
-    final currentMatch = matchAsync.valueOrNull;
-    final match = currentMatch?.id == widget.quickMatchId ? currentMatch : null;
+    final matchAsync = ref.watch(
+      quickMatchChatContextProvider(widget.quickMatchId),
+    );
+    final match = matchAsync.valueOrNull;
     if (match?.isMatched == true && _trackingMatchId != match!.id) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_startLocationTracking(match));
@@ -128,9 +130,17 @@ class _ExerciseQuickChatScreenState
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _QuickPartnerHeader(
+          ChatThreadHeader(
+            isRequester: match?.requesterId == uid,
             counterpart: counterpart,
-            loading: matchAsync.isLoading,
+            loading: matchAsync.isLoading && counterpart == null,
+            counterpartRoleLabel: '1:1 운동 파트너',
+            onProfileTap: counterpart == null
+                ? null
+                : () => _openCounterpartProfile(
+                    counterpart: counterpart,
+                    counterpartIsRequester: match?.requesterId != uid,
+                  ),
           ),
           InkWell(
             onTap: () => setState(() => _mapExpanded = !_mapExpanded),
@@ -209,6 +219,7 @@ class _ExerciseQuickChatScreenState
                     ),
                   );
                 }
+                _ensureInitialScroll();
                 return ListView.builder(
                   controller: _scroll,
                   padding: const EdgeInsets.symmetric(
@@ -384,6 +395,17 @@ class _ExerciseQuickChatScreenState
     return position.maxScrollExtent - position.pixels < 180;
   }
 
+  void _ensureInitialScroll() {
+    if (_initialScrollDone || _initialScrollScheduled) return;
+    _initialScrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialScrollScheduled = false;
+      if (!mounted || !_scroll.hasClients || _initialScrollDone) return;
+      _scrollToEnd(jump: true);
+      _initialScrollDone = true;
+    });
+  }
+
   void _scrollToEnd({required bool jump}) {
     if (!_scroll.hasClients) return;
     final end = _scroll.position.maxScrollExtent;
@@ -503,79 +525,20 @@ class _ExerciseQuickChatScreenState
     } catch (_) {}
   }
 
-  void _show(String message) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-  );
-}
-
-class _QuickPartnerHeader extends StatelessWidget {
-  const _QuickPartnerHeader({required this.counterpart, required this.loading});
-
-  final AppUser? counterpart;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              TtmSpacing.lg,
-              TtmSpacing.md,
-              TtmSpacing.lg,
-              TtmSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                if (loading)
-                  const SizedBox.square(
-                    dimension: 44,
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else
-                  TtmProfileAvatar(
-                    imageUrl: counterpart?.profileImageUrl,
-                    size: 44,
-                    borderWidth: 1.5,
-                  ),
-                const SizedBox(width: TtmSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TtmPremiumNickname(
-                        nickname: loading
-                            ? '불러오는 중…'
-                            : ttmDisplayNickname(counterpart?.nickname),
-                        isPremium: counterpart?.isPremium ?? false,
-                        crownSize: 20,
-                        style: TtmTypography.title.copyWith(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '1:1 운동 파트너',
-                        style: TtmTypography.label.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(
-            height: 1,
-            color: colors.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ],
+  void _openCounterpartProfile({
+    required AppUser counterpart,
+    required bool counterpartIsRequester,
+  }) {
+    unawaited(
+      showCounterpartProfileSheet(
+        context,
+        user: counterpart,
+        counterpartIsRequester: counterpartIsRequester,
       ),
     );
   }
+
+  void _show(String message) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+  );
 }

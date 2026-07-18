@@ -219,10 +219,12 @@ class FcmPushService {
       case PushTypes.chatMessage:
       case PushTypes.exerciseMatchMessage:
       case PushTypes.raidApplicationMessage:
+      case PushTypes.raidGroupMessage:
         return PushChannels.message;
       case PushTypes.completionRequested:
       case PushTypes.requestCompleted:
       case PushTypes.raidStarted:
+      case PushTypes.raidCompleted:
         return PushChannels.completion;
       default:
         return PushChannels.defaultChannel;

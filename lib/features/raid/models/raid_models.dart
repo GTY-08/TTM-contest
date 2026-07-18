@@ -84,6 +84,45 @@ class RaidPlaceSearchResult {
 }
 
 @immutable
+class RaidLiveLocation {
+  const RaidLiveLocation({
+    required this.raidId,
+    required this.participantId,
+    required this.userId,
+    required this.latitude,
+    required this.longitude,
+    required this.capturedAt,
+    this.accuracyMeters,
+  });
+
+  final String raidId;
+  final String participantId;
+  final String userId;
+  final double latitude;
+  final double longitude;
+  final double? accuracyMeters;
+  final DateTime capturedAt;
+
+  bool get isFresh =>
+      capturedAt.isAfter(DateTime.now().subtract(const Duration(minutes: 5)));
+
+  factory RaidLiveLocation.fromMap(Map<String, dynamic> map) =>
+      RaidLiveLocation(
+        raidId: map['raid_id']?.toString() ?? '',
+        participantId: map['participant_id']?.toString() ?? '',
+        userId: map['user_id']?.toString() ?? '',
+        latitude: _asDouble(map['latitude']),
+        longitude: _asDouble(map['longitude']),
+        accuracyMeters: _asNullableDouble(map['accuracy_m']),
+        capturedAt:
+            DateTime.tryParse(
+              map['captured_at']?.toString() ?? '',
+            )?.toLocal() ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+@immutable
 class RaidParticipant {
   const RaidParticipant({
     required this.id,
@@ -254,6 +293,50 @@ class RaidDetail {
       organizer: map['organizer'] is Map
           ? Map<String, dynamic>.from(map['organizer'] as Map)
           : null,
+    );
+  }
+}
+
+@immutable
+class RaidApplicationChatContext {
+  const RaidApplicationChatContext({
+    required this.raidId,
+    required this.raidTitle,
+    required this.raidStatus,
+    required this.isApplicant,
+    required this.participant,
+    required this.counterpart,
+  });
+
+  final String raidId;
+  final String raidTitle;
+  final String raidStatus;
+  final bool isApplicant;
+  final RaidParticipant participant;
+  final Map<String, dynamic> counterpart;
+
+  bool get isReadOnly =>
+      {'rejected', 'cancelled'}.contains(participant.status) ||
+      {'completed', 'cancelled'}.contains(raidStatus);
+
+  factory RaidApplicationChatContext.fromMap(Map<String, dynamic> map) {
+    if (map['ok'] != true) {
+      throw StateError(map['reason']?.toString() ?? 'chat_context_unavailable');
+    }
+    final participant = map['participant'];
+    final counterpart = map['counterpart'];
+    if (participant is! Map || counterpart is! Map) {
+      throw StateError('chat_context_incomplete');
+    }
+    return RaidApplicationChatContext(
+      raidId: map['raid_id']?.toString() ?? '',
+      raidTitle: map['raid_title']?.toString() ?? '',
+      raidStatus: map['raid_status']?.toString() ?? '',
+      isApplicant: map['is_applicant'] == true,
+      participant: RaidParticipant.fromMap(
+        Map<String, dynamic>.from(participant),
+      ),
+      counterpart: Map<String, dynamic>.from(counterpart),
     );
   }
 }

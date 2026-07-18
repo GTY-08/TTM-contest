@@ -15,6 +15,7 @@ Future<void> showCounterpartProfileSheet(
   BuildContext context, {
   required AppUser user,
   required bool counterpartIsRequester,
+  String? counterpartRoleLabel,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -88,10 +89,29 @@ Future<void> showCounterpartProfileSheet(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                MatchRoleBadge(
-                                  isRequester: counterpartIsRequester,
-                                  compact: false,
-                                ),
+                                if (counterpartRoleLabel == null)
+                                  MatchRoleBadge(
+                                    isRequester: counterpartIsRequester,
+                                    compact: false,
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.primaryContainer,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      counterpartRoleLabel,
+                                      style: TtmTypography.label.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: colors.onPrimaryContainer,
+                                      ),
+                                    ),
+                                  ),
                                 const SizedBox(height: 6),
                                 TtmPremiumNickname(
                                   nickname: user.nickname,

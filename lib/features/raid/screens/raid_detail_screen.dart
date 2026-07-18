@@ -17,6 +17,7 @@ import '../models/exercise_matching_models.dart';
 import '../models/raid_models.dart';
 import '../providers/raid_providers.dart';
 import '../services/exercise_location_service.dart';
+import '../widgets/raid_live_map.dart';
 
 class RaidDetailScreen extends ConsumerStatefulWidget {
   const RaidDetailScreen({super.key, required this.raidId});
@@ -29,6 +30,10 @@ class RaidDetailScreen extends ConsumerStatefulWidget {
 class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
   bool _busy = false;
   Timer? _refreshTimer;
+  Timer? _locationTimer;
+  Raid? _visibleRaid;
+  bool _locationUpdateBusy = false;
+  DateTime? _lastLocationUpdateAt;
 
   @override
   void initState() {
@@ -38,11 +43,15 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
         ref.invalidate(raidDetailProvider(widget.raidId));
       }
     });
+    _locationTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(_updateMyRaidLocation());
+    });
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _locationTimer?.cancel();
     super.dispose();
   }
 
@@ -61,6 +70,14 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
 
   Widget _body(RaidDetail detail) {
     final raid = detail.raid;
+    _visibleRaid = raid;
+    if (_canShareLocation(raid) &&
+        (_lastLocationUpdateAt == null ||
+            DateTime.now().difference(_lastLocationUpdateAt!).inSeconds > 10)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_updateMyRaidLocation());
+      });
+    }
     final uid = ref.watch(authUserIdProvider);
     final isOrganizer = raid.organizerId == uid;
     final recruitment = isOrganizer
@@ -74,6 +91,13 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
           (item) => item.status == 'applied' || item.status == 'waitlisted',
         )
         .toList();
+    final liveLocations =
+        ref.watch(raidLocationsProvider(raid.id)).valueOrNull ??
+        const <RaidLiveLocation>[];
+    final approvedUserIds = approved.map((item) => item.userId).toSet();
+    final visibleLocations = liveLocations
+        .where((location) => approvedUserIds.contains(location.userId))
+        .toList(growable: false);
     final date = DateFormat(
       'yyyy년 M월 d일 (E) HH:mm',
       'ko',
@@ -169,6 +193,29 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
               ],
             ),
           ),
+          if (_canShareLocation(raid)) ...[
+            const SizedBox(height: TtmSpacing.lg),
+            Text(
+              '집합 장소와 참가자 위치',
+              style: TtmTypography.title.copyWith(fontSize: 18),
+            ),
+            const SizedBox(height: TtmSpacing.sm),
+            RaidLiveMap(
+              meetingLatitude: raid.venue.latitude,
+              meetingLongitude: raid.venue.longitude,
+              meetingLabel: raid.venue.name,
+              locations: visibleLocations,
+              participants: approved,
+              myUserId: uid,
+            ),
+            const SizedBox(height: TtmSpacing.xs),
+            Text(
+              '승인된 참가자에게만 최근 위치가 표시돼요. 위치는 이 화면을 보는 동안 갱신됩니다.',
+              style: TtmTypography.label.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           if (raid.description.trim().isNotEmpty) ...[
             const SizedBox(height: TtmSpacing.lg),
             Text('레이드 안내', style: TtmTypography.title.copyWith(fontSize: 18)),
@@ -197,8 +244,8 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
             const SizedBox(height: TtmSpacing.md),
             TTMButton(
               label: raid.status == 'completed' || raid.status == 'cancelled'
-                  ? '단체 DM 기록 보기'
-                  : '레이드 단체 DM',
+                  ? '레이드 단체채팅 기록 보기'
+                  : '레이드 단체채팅',
               icon: Icons.forum_outlined,
               onPressed: () =>
                   context.push('${AppRoutes.raidRoot}/${raid.id}/chat'),
@@ -284,11 +331,14 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
               busy: _busy,
               onPressed: _busy ? null : () => _leave(raid.id),
             ),
-          if (isOrganizer && raid.status == 'attendance') ...[
+          if (isOrganizer &&
+              raid.isPremiumRaid &&
+              raid.endsAt.isBefore(DateTime.now()) &&
+              !{'completed', 'cancelled'}.contains(raid.status)) ...[
             TTMButton(
-              label: '출석 확인 마치기',
+              label: '레이드 완료',
               busy: _busy,
-              onPressed: _busy ? null : () => _finalize(raid.id),
+              onPressed: _busy ? null : () => _confirmFinalize(raid),
               icon: Icons.check_circle_outline,
             ),
             const SizedBox(height: TtmSpacing.sm),
@@ -451,10 +501,73 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
     () => ref.read(raidRepositoryProvider).castAttendanceVote(id, vote),
     success: '출석 확인 의견을 보냈어요.',
   );
-  Future<void> _finalize(String raidId) => _run(
-    () => ref.read(raidRepositoryProvider).finalize(raidId),
-    success: '레이드가 완료됐어요.',
-  );
+  Future<void> _confirmFinalize(Raid raid) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('레이드를 완료할까요?'),
+        content: const Text(
+          '참석·지각·중도 이탈 참가자는 완료 보너스 100P를 받고, '
+          '불참 참가자는 보유 포인트에서 최대 100P가 차감돼요. '
+          '모든 참가자의 출석 상태를 확인한 뒤 완료해 주세요.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('돌아가기'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('완료하기'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _finalize(raid.id);
+  }
+
+  Future<void> _finalize(String raidId) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final result = await ref.read(raidRepositoryProvider).finalize(raidId);
+      if (!mounted) return;
+      if (result['ok'] == true) {
+        final bonus = (result['participant_bonus_total'] as num?)?.toInt() ?? 0;
+        final penalty = (result['absence_penalty_total'] as num?)?.toInt() ?? 0;
+        _show('레이드가 완료됐어요. 참여 보너스 ${bonus}P · 불참 감점 ${penalty}P');
+        await _reload();
+      } else {
+        _show(_reason(result['reason']?.toString()));
+      }
+    } catch (error) {
+      if (mounted) _show(_reason(error.toString()));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  bool _canShareLocation(Raid raid) =>
+      raid.isMember && !{'completed', 'cancelled'}.contains(raid.status);
+
+  Future<void> _updateMyRaidLocation() async {
+    final raid = _visibleRaid;
+    if (raid == null || !_canShareLocation(raid) || _locationUpdateBusy) return;
+    _locationUpdateBusy = true;
+    try {
+      final location = await ref
+          .read(exerciseLocationServiceProvider)
+          .current(request: false);
+      final result = await ref
+          .read(raidRepositoryProvider)
+          .updateRaidLocation(raidId: raid.id, location: location);
+      if (result['ok'] == true) _lastLocationUpdateAt = DateTime.now();
+    } catch (_) {
+      // The meeting marker remains available when location permission is off.
+    } finally {
+      _locationUpdateBusy = false;
+    }
+  }
 
   Future<void> _cancel(String raidId) async {
     final ok = await showDialog<bool>(
@@ -532,6 +645,7 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
     if (value.contains('attendance_pending')) {
       return '모든 참가자의 출석 상태를 먼저 확인해 주세요.';
     }
+    if (value.contains('already_completed')) return '이미 완료된 레이드예요.';
     if (value.contains('raid_not_finished')) return '레이드가 끝난 뒤 처리할 수 있어요.';
     return '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
   }

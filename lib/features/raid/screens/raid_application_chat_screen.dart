@@ -11,11 +11,10 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/display_nickname.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/providers/auth_providers.dart';
-import '../../../shared/widgets/ttm_premium_nickname.dart';
 import '../../chat/models/chat_message.dart';
 import '../../chat/widgets/chat_message_bubble.dart';
-import '../../profile/widgets/profile_photo_change.dart';
-import '../models/raid_models.dart';
+import '../../chat/widgets/chat_thread_header.dart';
+import '../../chat/widgets/counterpart_profile_sheet.dart';
 import '../providers/raid_providers.dart';
 
 class RaidApplicationChatScreen extends ConsumerStatefulWidget {
@@ -42,6 +41,7 @@ class _RaidApplicationChatScreenState
   bool _sending = false;
   bool _pickingImage = false;
   bool _initialScrollDone = false;
+  bool _initialScrollScheduled = false;
   bool _forceScrollToEnd = false;
   int _lastMessageCount = 0;
 
@@ -62,26 +62,23 @@ class _RaidApplicationChatScreenState
 
   @override
   Widget build(BuildContext context) {
-    final detailAsync = ref.watch(raidDetailProvider(widget.raidId));
-    final detail = detailAsync.valueOrNull;
+    final contextAsync = ref.watch(
+      raidApplicationChatContextProvider(widget.participantId),
+    );
+    final chatContext = contextAsync.valueOrNull;
     final messagesProvider = raidApplicationMessagesProvider(
       widget.participantId,
     );
     final messagesAsync = ref.watch(messagesProvider);
     final uid = ref.watch(authUserIdProvider);
     final myProfile = ref.watch(myProfileProvider).valueOrNull;
-    final participant = _participantFrom(detail);
-    final isApplicant = participant?.userId == uid;
-    final counterpart = _counterpartFrom(
-      detail: detail,
-      participant: participant,
-      isApplicant: isApplicant,
-    );
+    final participant = chatContext?.participant;
+    final isApplicant = chatContext?.isApplicant ?? false;
+    final counterpart = chatContext == null
+        ? null
+        : AppUser.fromMap(chatContext.counterpart);
     final counterpartName = ttmDisplayNickname(counterpart?.nickname);
-    final readOnly =
-        participant == null ||
-        {'rejected', 'cancelled'}.contains(participant.status) ||
-        {'completed', 'cancelled'}.contains(detail?.raid.status);
+    final readOnly = chatContext?.isReadOnly ?? true;
 
     ref.listen<AsyncValue<({List<ChatMessage> messages, ChatReadState reads})>>(
       messagesProvider,
@@ -121,10 +118,17 @@ class _RaidApplicationChatScreenState
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _RaidChatHeader(
+          ChatThreadHeader(
+            isRequester: isApplicant,
             counterpart: counterpart,
-            loading: detailAsync.isLoading,
-            roleLabel: isApplicant ? '매칭 운영자' : '지원자',
+            loading: contextAsync.isLoading && counterpart == null,
+            counterpartRoleLabel: isApplicant ? '매칭 운영자' : '지원자',
+            onProfileTap: counterpart == null
+                ? null
+                : () => _openCounterpartProfile(
+                    counterpart: counterpart,
+                    counterpartIsRequester: isApplicant,
+                  ),
           ),
           if (participant?.applicationMessage?.isNotEmpty == true)
             Container(
@@ -186,6 +190,7 @@ class _RaidApplicationChatScreenState
                     ),
                   );
                 }
+                _ensureInitialScroll();
                 return ListView.builder(
                   controller: _scroll,
                   padding: const EdgeInsets.symmetric(
@@ -313,6 +318,17 @@ class _RaidApplicationChatScreenState
     return position.maxScrollExtent - position.pixels < 180;
   }
 
+  void _ensureInitialScroll() {
+    if (_initialScrollDone || _initialScrollScheduled) return;
+    _initialScrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialScrollScheduled = false;
+      if (!mounted || !_scroll.hasClients || _initialScrollDone) return;
+      _scrollToEnd(jump: true);
+      _initialScrollDone = true;
+    });
+  }
+
   void _scrollToEnd({required bool jump}) {
     if (!_scroll.hasClients) return;
     final end = _scroll.position.maxScrollExtent;
@@ -329,33 +345,17 @@ class _RaidApplicationChatScreenState
     }
   }
 
-  RaidParticipant? _participantFrom(RaidDetail? detail) {
-    if (detail == null) return null;
-    for (final participant in detail.participants) {
-      if (participant.id == widget.participantId) return participant;
-    }
-    final mine = detail.raid.myParticipant;
-    return mine?.id == widget.participantId ? mine : null;
-  }
-
-  AppUser? _counterpartFrom({
-    required RaidDetail? detail,
-    required RaidParticipant? participant,
-    required bool isApplicant,
+  void _openCounterpartProfile({
+    required AppUser counterpart,
+    required bool counterpartIsRequester,
   }) {
-    if (isApplicant) {
-      final organizer = detail?.organizer;
-      if (organizer == null || organizer['id'] == null) return null;
-      return AppUser.fromMap(organizer);
-    }
-    if (participant == null) return null;
-    return AppUser.fromMap({
-      'id': participant.userId,
-      'nickname': participant.nickname,
-      'profile_image_url': participant.profileImageUrl,
-      'rating': participant.rating,
-      'is_premium': participant.isPremium,
-    });
+    unawaited(
+      showCounterpartProfileSheet(
+        context,
+        user: counterpart,
+        counterpartIsRequester: counterpartIsRequester,
+      ),
+    );
   }
 
   Future<void> _send() async {
@@ -467,82 +467,4 @@ class _RaidApplicationChatScreenState
   void _show(String message) => ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
   );
-}
-
-class _RaidChatHeader extends StatelessWidget {
-  const _RaidChatHeader({
-    required this.counterpart,
-    required this.loading,
-    required this.roleLabel,
-  });
-
-  final AppUser? counterpart;
-  final bool loading;
-  final String roleLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              TtmSpacing.lg,
-              TtmSpacing.md,
-              TtmSpacing.lg,
-              TtmSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                if (loading)
-                  const SizedBox.square(
-                    dimension: 44,
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else
-                  TtmProfileAvatar(
-                    imageUrl: counterpart?.profileImageUrl,
-                    size: 44,
-                    borderWidth: 1.5,
-                  ),
-                const SizedBox(width: TtmSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TtmPremiumNickname(
-                        nickname: loading
-                            ? '불러오는 중…'
-                            : ttmDisplayNickname(counterpart?.nickname),
-                        isPremium: counterpart?.isPremium ?? false,
-                        crownSize: 20,
-                        style: TtmTypography.title.copyWith(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        roleLabel,
-                        style: TtmTypography.label.copyWith(
-                          fontSize: 12,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(
-            height: 1,
-            color: colors.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ],
-      ),
-    );
-  }
 }

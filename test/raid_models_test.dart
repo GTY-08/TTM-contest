@@ -106,5 +106,51 @@ void main() {
       expect(place.address, '대구광역시 달서구 공원순환로 36');
       expect(place.hasValidLocation, isTrue);
     });
+
+    test('parses a fresh raid participant location', () {
+      final capturedAt = DateTime.now().subtract(const Duration(seconds: 20));
+      final location = RaidLiveLocation.fromMap({
+        'raid_id': 'raid-1',
+        'participant_id': 'participant-1',
+        'user_id': 'user-1',
+        'latitude': 35.8582,
+        'longitude': 128.6305,
+        'accuracy_m': 12.5,
+        'captured_at': capturedAt.toUtc().toIso8601String(),
+      });
+
+      expect(location.userId, 'user-1');
+      expect(location.accuracyMeters, 12.5);
+      expect(location.isFresh, isTrue);
+    });
+
+    test('parses a premium application chat context', () {
+      final context = RaidApplicationChatContext.fromMap({
+        'ok': true,
+        'raid_id': 'raid-1',
+        'raid_title': '주말 러닝',
+        'raid_status': 'recruiting',
+        'is_applicant': true,
+        'participant': {
+          'id': 'participant-1',
+          'raid_id': 'raid-1',
+          'user_id': 'applicant-1',
+          'role': 'member',
+          'status': 'applied',
+          'application_message': '함께 뛰고 싶어요.',
+        },
+        'counterpart': {
+          'id': 'organizer-1',
+          'nickname': '운영자',
+          'profile_image_url': 'https://example.com/profile.jpg',
+          'is_premium': true,
+        },
+      });
+
+      expect(context.isApplicant, isTrue);
+      expect(context.isReadOnly, isFalse);
+      expect(context.participant.applicationMessage, '함께 뛰고 싶어요.');
+      expect(context.counterpart['nickname'], '운영자');
+    });
   });
 }

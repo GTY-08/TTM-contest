@@ -34,6 +34,7 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
   final _feeController = TextEditingController(text: '0');
   final _placeSearchController = TextEditingController();
   final _mapKey = GlobalKey<MeetPointMapPickerState>();
+  Timer? _reverseLookupTimer;
   NLatLng _mapCenter = const NLatLng(37.5665, 126.9780);
   double? _locationLatitude;
   double? _locationLongitude;
@@ -42,6 +43,7 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
   bool _preserveLocationLabelOnNextMapUpdate = false;
   bool _locationBusy = false;
   bool _placeSearchBusy = false;
+  bool _locationResolving = false;
   String? _exerciseType;
   String _intensity = 'medium';
   DateTime _startsAt = DateTime.now().add(const Duration(hours: 1));
@@ -61,6 +63,7 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
 
   @override
   void dispose() {
+    _reverseLookupTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     _feeController.dispose();
@@ -356,10 +359,9 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
       final address = _locationAddress;
       return address == null || address.isEmpty ? label : '$label\n$address';
     }
-    final latitude = _locationLatitude;
-    final longitude = _locationLongitude;
-    if (latitude != null && longitude != null) {
-      return '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+    if (_locationResolving) return '선택한 위치의 주변 장소를 확인하고 있어요.';
+    if (_locationLatitude != null && _locationLongitude != null) {
+      return '지도에서 선택한 장소';
     }
     return '지도를 움직이거나 장소를 검색해 주세요.';
   }
@@ -375,6 +377,52 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
       }
       _preserveLocationLabelOnNextMapUpdate = false;
     });
+    if (!preserve) _scheduleReverseLookup(latitude, longitude);
+  }
+
+  void _scheduleReverseLookup(double latitude, double longitude) {
+    _reverseLookupTimer?.cancel();
+    _reverseLookupTimer = Timer(const Duration(milliseconds: 550), () {
+      unawaited(_resolveSelectedLocation(latitude, longitude));
+    });
+  }
+
+  Future<void> _resolveSelectedLocation(
+    double latitude,
+    double longitude,
+  ) async {
+    if (!mounted) return;
+    setState(() => _locationResolving = true);
+    try {
+      final place = await ref
+          .read(raidRepositoryProvider)
+          .resolvePlace(latitude: latitude, longitude: longitude);
+      if (!mounted ||
+          _locationLatitude != latitude ||
+          _locationLongitude != longitude) {
+        return;
+      }
+      setState(() {
+        _locationLabel = place.label;
+        _locationAddress = place.address;
+      });
+    } catch (_) {
+      if (!mounted ||
+          _locationLatitude != latitude ||
+          _locationLongitude != longitude) {
+        return;
+      }
+      setState(() {
+        _locationLabel = '지도에서 선택한 장소';
+        _locationAddress = '정확한 집합 위치는 지도 핀을 확인해 주세요.';
+      });
+    } finally {
+      if (mounted &&
+          _locationLatitude == latitude &&
+          _locationLongitude == longitude) {
+        setState(() => _locationResolving = false);
+      }
+    }
   }
 
   Future<void> _useCurrentLocation({required bool showMessage}) async {
@@ -390,11 +438,12 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
         _mapCenter = point;
         _locationLatitude = location.latitude;
         _locationLongitude = location.longitude;
-        _locationLabel = '내 위치 근처';
+        _locationLabel = null;
         _locationAddress = null;
         _preserveLocationLabelOnNextMapUpdate = true;
       });
       await _mapKey.currentState?.moveTo(point, zoom: 17);
+      await _resolveSelectedLocation(location.latitude, location.longitude);
       if (showMessage && mounted) _show('현재 위치로 지도를 이동했어요.');
     } on ExerciseLocationException catch (error) {
       if (showMessage && mounted) {
@@ -561,6 +610,12 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
       }
       return;
     }
+    if (_locationLabel == null &&
+        _locationLatitude != null &&
+        _locationLongitude != null) {
+      await _resolveSelectedLocation(_locationLatitude!, _locationLongitude!);
+      if (!mounted) return;
+    }
     final now = DateTime.now();
     if (_startsAt.isBefore(now.add(raidMinimumLeadTime))) {
       _show('시작 시간은 지금부터 10분 이후로 설정해 주세요.');
@@ -578,8 +633,7 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
             locationName: _locationLabel ?? '선택한 운동 장소',
             locationAddress: (_locationAddress?.trim().isNotEmpty ?? false)
                 ? _locationAddress!.trim()
-                : '${_locationLatitude!.toStringAsFixed(6)}, '
-                      '${_locationLongitude!.toStringAsFixed(6)}',
+                : '정확한 집합 위치는 지도 핀을 확인해 주세요.',
             latitude: _locationLatitude!,
             longitude: _locationLongitude!,
             exerciseType: _exerciseType!,

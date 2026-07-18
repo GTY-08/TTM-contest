@@ -152,6 +152,42 @@ class ChatAttachmentRepository {
         .getPublicUrl(path);
   }
 
+  Future<String> uploadRaidGroupImage({
+    required String raidId,
+    required File file,
+  }) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) throw StateError('not_authenticated');
+
+    final bytes = await file.readAsBytes();
+    final lower = file.path.toLowerCase();
+    final ext = lower.endsWith('.png')
+        ? 'png'
+        : lower.endsWith('.webp')
+        ? 'webp'
+        : 'jpg';
+    final mime = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final path =
+        'raid-group/$raidId/$uid/'
+        '${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+    await _supabase.storage
+        .from(TtmStorageConstants.chatAttachmentsBucket)
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: mime, upsert: false),
+        );
+
+    return _supabase.storage
+        .from(TtmStorageConstants.chatAttachmentsBucket)
+        .getPublicUrl(path);
+  }
+
   Future<String> uploadTaskProofImage({
     required String requestId,
     required File file,

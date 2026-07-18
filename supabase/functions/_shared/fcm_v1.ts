@@ -133,9 +133,11 @@ function channelForType(pushType: string): string {
     case "chat_message":
     case "exercise_match_message":
     case "raid_application_message":
+    case "raid_group_message":
       return "ttm_message";
     case "request_completed":
     case "raid_started":
+    case "raid_completed":
       return "ttm_completion";
     default:
       return "ttm_default";

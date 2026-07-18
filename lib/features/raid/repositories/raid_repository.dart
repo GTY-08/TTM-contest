@@ -44,6 +44,31 @@ class RaidRepository {
         .toList(growable: false);
   }
 
+  Future<({String label, String address})> resolvePlace({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final response = await _supabase.functions.invoke(
+      'place-reverse',
+      body: {'latitude': latitude, 'longitude': longitude},
+    );
+    final data = response.data;
+    if (data is! Map) throw StateError('reverse_lookup_unavailable');
+    final map = Map<String, dynamic>.from(data);
+    if (map['ok'] != true) {
+      throw StateError(map['reason']?.toString() ?? 'reverse_lookup_failed');
+    }
+    final label = map['label']?.toString().trim() ?? '';
+    final address = map['address']?.toString().trim() ?? '';
+    if (label.isEmpty && address.isEmpty) {
+      throw StateError('location_not_found');
+    }
+    return (
+      label: label.isEmpty ? address : label,
+      address: address.isEmpty ? label : address,
+    );
+  }
+
   Future<List<Raid>> fetchRaids({
     double? latitude,
     double? longitude,
@@ -235,6 +260,21 @@ class RaidRepository {
     final raw = await _supabase.rpc('get_my_exercise_quick_match');
     if (raw is! Map) return null;
     return ExerciseQuickMatch.fromMap(Map<String, dynamic>.from(raw));
+  }
+
+  Future<ExerciseQuickMatch> fetchQuickMatchChatContext(
+    String quickMatchId,
+  ) async {
+    final raw = await _supabase.rpc(
+      'get_exercise_quick_match_chat_context',
+      params: {'p_quick_match_id': quickMatchId},
+    );
+    if (raw is! Map) throw StateError('match_not_found');
+    final map = Map<String, dynamic>.from(raw);
+    if (map['ok'] != true) {
+      throw StateError(map['reason']?.toString() ?? 'match_not_found');
+    }
+    return ExerciseQuickMatch.fromMap(map);
   }
 
   Future<List<ExerciseMatchOffer>> fetchQuickMatchOffers() async {
@@ -493,39 +533,185 @@ class RaidRepository {
   Future<Map<String, dynamic>> appealAttendance(String raidId, String reason) =>
       _rpc('appeal_raid_attendance', {'p_raid_id': raidId, 'p_reason': reason});
 
-  Future<Map<String, dynamic>> finalize(String raidId) =>
-      _rpc('finalize_raid', {'p_raid_id': raidId});
+  Future<Map<String, dynamic>> finalize(String raidId) async {
+    final result = await _rpc('finalize_raid', {'p_raid_id': raidId});
+    if (result['ok'] == true) await flushPushOutbox(_supabase);
+    return result;
+  }
+
+  Stream<List<RaidLiveLocation>> watchRaidLocations(String raidId) => _supabase
+      .from('raid_participant_locations')
+      .stream(primaryKey: ['raid_id', 'user_id'])
+      .eq('raid_id', raidId)
+      .map(
+        (rows) => rows
+            .map(
+              (row) => RaidLiveLocation.fromMap(Map<String, dynamic>.from(row)),
+            )
+            .where((location) => location.isFresh)
+            .toList(growable: false),
+      );
+
+  Future<Map<String, dynamic>> updateRaidLocation({
+    required String raidId,
+    required ExerciseLocationSnapshot location,
+  }) => _rpc('update_my_raid_location', {
+    'p_raid_id': raidId,
+    ..._locationParams(location),
+  });
 
   Future<Map<String, dynamic>> cancel(String raidId, String reason) =>
       _rpc('cancel_raid', {'p_raid_id': raidId, 'p_reason': reason});
 
-  Stream<List<RaidMessage>> watchMessages(String raidId) {
-    return _supabase
-        .from('raid_messages')
-        .stream(primaryKey: ['id'])
-        .eq('raid_id', raidId)
-        .order('created_at')
-        .map(
-          (rows) => rows
-              .map((row) => RaidMessage.fromMap(Map<String, dynamic>.from(row)))
-              .toList(growable: false),
-        );
+  Stream<({List<ChatMessage> messages, Map<String, DateTime> reads})>
+  watchMessages(String raidId) {
+    Future<({List<ChatMessage> messages, Map<String, DateTime> reads})>
+    load() async {
+      final results = await Future.wait([
+        _supabase
+            .from('raid_messages')
+            .select()
+            .eq('raid_id', raidId)
+            .order('created_at', ascending: true),
+        _supabase.from('raid_chat_reads').select().eq('raid_id', raidId),
+      ]);
+      final messages = results[0]
+          .map((row) {
+            final map = Map<String, dynamic>.from(row);
+            map['request_id'] = raidId;
+            return ChatMessage.fromMap(map);
+          })
+          .toList(growable: false);
+      final reads = <String, DateTime>{};
+      for (final row in results[1]) {
+        final map = Map<String, dynamic>.from(row);
+        final userId = map['user_id']?.toString();
+        final readAt = DateTime.tryParse(map['last_read_at']?.toString() ?? '');
+        if (userId != null && readAt != null) reads[userId] = readAt;
+      }
+      return (messages: messages, reads: reads);
+    }
+
+    final controller =
+        StreamController<
+          ({List<ChatMessage> messages, Map<String, DateTime> reads})
+        >();
+    StreamSubscription<dynamic>? messageSubscription;
+    StreamSubscription<dynamic>? readSubscription;
+
+    Future<void> emit() async {
+      if (controller.isClosed) return;
+      try {
+        controller.add(await load());
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      }
+    }
+
+    controller.onListen = () {
+      unawaited(emit());
+      messageSubscription = _supabase
+          .from('raid_messages')
+          .stream(primaryKey: ['id'])
+          .eq('raid_id', raidId)
+          .listen((_) => unawaited(emit()));
+      readSubscription = _supabase
+          .from('raid_chat_reads')
+          .stream(primaryKey: ['raid_id', 'user_id'])
+          .eq('raid_id', raidId)
+          .listen((_) => unawaited(emit()));
+    };
+    controller.onCancel = () async {
+      await messageSubscription?.cancel();
+      await readSubscription?.cancel();
+    };
+    return controller.stream;
   }
 
-  Future<void> sendMessage(String raidId, String content) async {
-    final uid = _supabase.auth.currentUser?.id;
-    final clean = content.trim();
-    if (uid == null) throw StateError('not_authenticated');
-    if (clean.isEmpty) return;
-    await _supabase.from('raid_messages').insert({
-      'raid_id': raidId,
-      'sender_id': uid,
-      'content': clean,
+  Future<Map<String, dynamic>> sendMessage(
+    String raidId,
+    String content,
+  ) async {
+    final result = await _rpc('send_raid_group_message', {
+      'p_raid_id': raidId,
+      'p_content': content.trim(),
+      'p_message_type': 'text',
+      'p_attachment_url': null,
     });
+    if (result['ok'] == true) await flushPushOutbox(_supabase);
+    return result;
+  }
+
+  Future<void> sendRaidGroupImageMessages({
+    required String raidId,
+    required List<File> files,
+  }) async {
+    for (final file in files) {
+      final url = await _attachments.uploadRaidGroupImage(
+        raidId: raidId,
+        file: file,
+      );
+      final result = await _rpc('send_raid_group_message', {
+        'p_raid_id': raidId,
+        'p_content': '',
+        'p_message_type': 'image',
+        'p_attachment_url': url,
+      });
+      if (result['ok'] != true) {
+        throw StateError(result['reason']?.toString() ?? 'message_send_failed');
+      }
+    }
+    await flushPushOutbox(_supabase);
+  }
+
+  Future<void> deleteRaidMessage(String messageId) async {
+    final result = await _rpc('mark_raid_message_deleted', {
+      'p_message_id': messageId,
+    });
+    if (result['ok'] != true) {
+      throw StateError(result['reason']?.toString() ?? 'message_delete_failed');
+    }
   }
 
   Future<void> markChatRead(String raidId) =>
       _supabase.rpc('mark_raid_chat_read', params: {'p_raid_id': raidId});
+
+  RealtimeChannel watchRaidTyping({
+    required String raidId,
+    required void Function(String userId, bool isTyping) onTyping,
+  }) {
+    final channel = _supabase.channel('raid_group_typing:$raidId');
+    channel
+        .onBroadcast(
+          event: 'typing',
+          callback: (payload) {
+            final userId = payload['user_id']?.toString();
+            if (userId == null || userId.isEmpty) return;
+            onTyping(userId, payload['is_typing'] == true);
+          },
+        )
+        .subscribe();
+    return channel;
+  }
+
+  Future<void> sendRaidTyping({
+    required RealtimeChannel channel,
+    required bool isTyping,
+  }) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    await channel.sendBroadcastMessage(
+      event: 'typing',
+      payload: {
+        'user_id': uid,
+        'is_typing': isTyping,
+        'sent_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> removeRealtimeChannel(RealtimeChannel channel) =>
+      _supabase.removeChannel(channel);
 
   Stream<({List<ChatMessage> messages, ChatReadState reads})>
   watchApplicationMessages(String participantId) {
@@ -639,6 +825,17 @@ class RaidRepository {
     'mark_raid_application_chat_read',
     params: {'p_participant_id': participantId},
   );
+
+  Future<RaidApplicationChatContext> fetchApplicationChatContext(
+    String participantId,
+  ) async {
+    final raw = await _supabase.rpc(
+      'get_raid_application_chat_context',
+      params: {'p_participant_id': participantId},
+    );
+    if (raw is! Map) throw StateError('chat_context_unavailable');
+    return RaidApplicationChatContext.fromMap(Map<String, dynamic>.from(raw));
+  }
 
   Future<RewardSummary> fetchRewardSummary() async {
     final raw = await _supabase.rpc('get_my_reward_summary');

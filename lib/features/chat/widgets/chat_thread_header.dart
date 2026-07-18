@@ -16,18 +16,22 @@ class ChatThreadHeader extends StatelessWidget {
     required this.counterpart,
     this.loading = false,
     this.onProfileTap,
+    this.counterpartRoleLabel,
   });
 
   final bool isRequester;
   final AppUser? counterpart;
   final bool loading;
   final VoidCallback? onProfileTap;
+  final String? counterpartRoleLabel;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final name = ttmDisplayNickname(counterpart?.nickname);
-    final canTap = onProfileTap != null && counterpart != null && !loading;
+    final effectiveLoading = loading && counterpart == null;
+    final canTap =
+        onProfileTap != null && counterpart != null && !effectiveLoading;
 
     return Material(
       color: colors.surface,
@@ -45,7 +49,7 @@ class ChatThreadHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  if (loading)
+                  if (effectiveLoading)
                     const SizedBox(
                       width: 44,
                       height: 44,
@@ -65,7 +69,7 @@ class ChatThreadHeader extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TtmPremiumNickname(
-                          nickname: loading ? '불러오는 중…' : name,
+                          nickname: effectiveLoading ? '불러오는 중…' : name,
                           isPremium: counterpart?.isPremium ?? false,
                           crownSize: 20,
                           style: TtmTypography.title.copyWith(fontSize: 16),
@@ -73,13 +77,16 @@ class ChatThreadHeader extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            MatchRoleBadge(
-                              isRequester: !isRequester,
-                              compact: true,
-                            ),
-                            const SizedBox(width: TtmSpacing.sm),
+                            if (counterpartRoleLabel == null) ...[
+                              MatchRoleBadge(
+                                isRequester: !isRequester,
+                                compact: true,
+                              ),
+                              const SizedBox(width: TtmSpacing.sm),
+                            ],
                             Text(
-                              isRequester ? '작업자' : '요청자',
+                              counterpartRoleLabel ??
+                                  (isRequester ? '작업자' : '요청자'),
                               style: TtmTypography.label.copyWith(
                                 fontSize: 12,
                                 color: colors.onSurfaceVariant,

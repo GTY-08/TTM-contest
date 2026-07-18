@@ -17,6 +17,7 @@ class ChatMessageBubble extends StatelessWidget {
     required this.senderName,
     required this.senderAvatarUrl,
     required this.unreadByCounterpart,
+    this.unreadCount,
     this.showReadReceipt = false,
     this.showSenderName = false,
     this.showAvatar = true,
@@ -29,6 +30,7 @@ class ChatMessageBubble extends StatelessWidget {
   final String senderName;
   final String? senderAvatarUrl;
   final bool unreadByCounterpart;
+  final int? unreadCount;
   final bool showReadReceipt;
   final bool showSenderName;
   final bool showAvatar;
@@ -161,9 +163,9 @@ class ChatMessageBubble extends StatelessWidget {
     final meta = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (isMine && unreadByCounterpart) ...[
+        if (isMine && (unreadCount ?? (unreadByCounterpart ? 1 : 0)) > 0) ...[
           Text(
-            '1',
+            '${unreadCount ?? 1}',
             style: TtmTypography.label.copyWith(
               fontSize: 10,
               fontWeight: FontWeight.w700,

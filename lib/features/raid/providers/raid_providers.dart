@@ -118,8 +118,17 @@ final raidDetailProvider = FutureProvider.autoDispose
       (ref, raidId) => ref.watch(raidRepositoryProvider).fetchDetail(raidId),
     );
 
+final raidLocationsProvider = StreamProvider.autoDispose
+    .family<List<RaidLiveLocation>, String>((ref, raidId) {
+      ref.watch(authUserIdProvider);
+      return ref.watch(raidRepositoryProvider).watchRaidLocations(raidId);
+    });
+
 final raidMessagesProvider = StreamProvider.autoDispose
-    .family<List<RaidMessage>, String>((ref, raidId) {
+    .family<
+      ({List<ChatMessage> messages, Map<String, DateTime> reads}),
+      String
+    >((ref, raidId) {
       return ref.watch(raidRepositoryProvider).watchMessages(raidId);
     });
 
@@ -133,6 +142,14 @@ final raidApplicationMessagesProvider = StreamProvider.autoDispose
           .watchApplicationMessages(participantId);
     });
 
+final raidApplicationChatContextProvider = FutureProvider.autoDispose
+    .family<RaidApplicationChatContext, String>((ref, participantId) {
+      ref.watch(authUserIdProvider);
+      return ref
+          .watch(raidRepositoryProvider)
+          .fetchApplicationChatContext(participantId);
+    });
+
 final exercisePreferencesProvider = FutureProvider<ExercisePreferences>((ref) {
   ref.watch(authUserIdProvider);
   return ref.watch(raidRepositoryProvider).fetchExercisePreferences();
@@ -142,6 +159,14 @@ final myQuickMatchProvider = FutureProvider<ExerciseQuickMatch?>((ref) {
   ref.watch(authUserIdProvider);
   return ref.watch(raidRepositoryProvider).fetchMyQuickMatch();
 });
+
+final quickMatchChatContextProvider = FutureProvider.autoDispose
+    .family<ExerciseQuickMatch, String>((ref, quickMatchId) {
+      ref.watch(authUserIdProvider);
+      return ref
+          .watch(raidRepositoryProvider)
+          .fetchQuickMatchChatContext(quickMatchId);
+    });
 
 final exerciseMatchOffersProvider = FutureProvider<List<ExerciseMatchOffer>>((
   ref,
