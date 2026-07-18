@@ -209,11 +209,20 @@ class FcmPushService {
       case PushTypes.requestCancelled:
       case PushTypes.exerciseMatchMatched:
       case PushTypes.raidRecruitmentApplication:
+      case PushTypes.raidApplicationReceived:
+      case PushTypes.raidApplicationApproved:
+      case PushTypes.raidApplicationWaitlisted:
+      case PushTypes.raidApplicationRejected:
+      case PushTypes.raidParticipantJoined:
+      case PushTypes.raidParticipantCancelled:
         return PushChannels.matchResult;
       case PushTypes.chatMessage:
+      case PushTypes.exerciseMatchMessage:
+      case PushTypes.raidApplicationMessage:
         return PushChannels.message;
       case PushTypes.completionRequested:
       case PushTypes.requestCompleted:
+      case PushTypes.raidStarted:
         return PushChannels.completion;
       default:
         return PushChannels.defaultChannel;

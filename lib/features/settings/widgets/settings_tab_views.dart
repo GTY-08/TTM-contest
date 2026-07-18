@@ -20,9 +20,10 @@ import '../../../data/providers/auth_providers.dart';
 import '../../../data/providers/home_navigation_provider.dart';
 import '../../../data/providers/theme_providers.dart';
 import '../../../core/utils/ttm_snackbar.dart';
-import '../../../features/match/models/request_tag.dart';
-import '../../../features/match/providers/match_providers.dart';
 import '../../../features/premium/providers/premium_providers.dart';
+import '../../raid/models/exercise_matching_models.dart';
+import '../../raid/models/raid_models.dart';
+import '../../raid/providers/raid_providers.dart';
 import '../../../features/reports/report_repository.dart';
 import '../../../shared/widgets/ttm_button.dart';
 import '../../../shared/widgets/ttm_settings_widgets.dart';
@@ -430,34 +431,75 @@ class SettingsWorkerTab extends ConsumerStatefulWidget {
 
 class _SettingsWorkerTabState extends ConsumerState<SettingsWorkerTab> {
   bool _saving = false;
+  String? _exerciseSettingsSignature;
+  int _maxDistanceMeters = 5000;
+  final Set<String> _selectedExercises = {'walking'};
 
-  Future<void> _savePresence({
-    required double maxKm,
-    required Set<String> tags,
+  void _initializeExerciseSettings(ExercisePreferences preferences) {
+    final signature =
+        '${preferences.maxDistanceMeters}|${preferences.preferredExercises.join(',')}';
+    if (_exerciseSettingsSignature == signature) return;
+    _exerciseSettingsSignature = signature;
+    _maxDistanceMeters = preferences.maxDistanceMeters;
+    _selectedExercises
+      ..clear()
+      ..addAll(
+        preferences.preferredExercises.isEmpty
+            ? const ['walking']
+            : preferences.preferredExercises,
+      );
+  }
+
+  Future<void> _saveExerciseSettings({
+    required int maxDistanceMeters,
+    required Set<String> exercises,
   }) async {
     if (_saving) return;
-    final uid = ref.read(authUserIdProvider);
-    if (uid == null) return;
-    if (tags.isEmpty) {
-      _snack(context, '태그를 하나 이상 선택해 주세요.');
+    final preferences = ref.read(exercisePreferencesProvider).valueOrNull;
+    if (preferences == null) {
+      _snack(context, SettingsCopy.saveFailure);
       return;
     }
-    setState(() => _saving = true);
+    if (exercises.isEmpty) {
+      _snack(context, '선호 운동을 하나 이상 선택해 주세요.');
+      return;
+    }
+    final previousDistance = _maxDistanceMeters;
+    final previousExercises = Set<String>.from(_selectedExercises);
+    setState(() {
+      _saving = true;
+      _maxDistanceMeters = maxDistanceMeters;
+      _selectedExercises
+        ..clear()
+        ..addAll(exercises);
+    });
     try {
-      final presence = ref.read(myWorkerPresenceProvider).valueOrNull;
-      final status = presence?['status'] as String? ?? 'offline';
-      await ref
-          .read(matchingRepositoryProvider)
-          .upsertMyPresence(
-            workerId: uid,
-            status: status,
-            preferredTags: tags.toList(),
-            maxDistanceKm: maxKm,
+      final result = await ref
+          .read(raidRepositoryProvider)
+          .saveExercisePreferences(
+            activityLabel: preferences.activityLabel,
+            latitude: preferences.latitude,
+            longitude: preferences.longitude,
+            exercises: exercises.toList(),
+            fitnessLevel: preferences.fitnessLevel,
+            availableDays: preferences.availableDays,
+            availableStart: preferences.availableStart,
+            availableEnd: preferences.availableEnd,
+            maxDistanceMeters: maxDistanceMeters,
           );
-      ref.invalidate(myWorkerPresenceProvider);
+      if (result['ok'] != true) throw StateError('save_failed');
+      ref.invalidate(exercisePreferencesProvider);
       if (mounted) _snack(context, SettingsCopy.saveSuccess);
     } catch (_) {
-      if (mounted) _snack(context, SettingsCopy.saveFailure);
+      if (mounted) {
+        setState(() {
+          _maxDistanceMeters = previousDistance;
+          _selectedExercises
+            ..clear()
+            ..addAll(previousExercises);
+        });
+        _snack(context, SettingsCopy.saveFailure);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -466,135 +508,144 @@ class _SettingsWorkerTabState extends ConsumerState<SettingsWorkerTab> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(myProfileProvider);
-    final presenceAsync = ref.watch(myWorkerPresenceProvider);
+    final preferencesAsync = ref.watch(exercisePreferencesProvider);
     final colors = Theme.of(context).colorScheme;
 
     return profileAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Center(child: Text(SettingsCopy.saveFailure)),
-      data: (profile) {
-        final presence = presenceAsync.valueOrNull;
-        final maxKm = (presence?['max_distance_km'] as num?)?.toDouble() ?? 5.0;
-        final rawTags = presence?['preferred_tags'];
-        final selected = rawTags is List
-            ? rawTags.map((e) => e.toString()).toSet()
-            : TtmRequestTags.all.toSet();
+      data: (profile) => preferencesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => Center(child: Text(SettingsCopy.saveFailure)),
+        data: (preferences) {
+          _initializeExerciseSettings(preferences);
 
-        String penaltySubtitle = SettingsCopy.workerPenaltyNone;
-        if (profile != null) {
-          if (profile.hasActiveRequesterPenalty) {
-            penaltySubtitle = SettingsCopy.workerPenaltyUntil(
-              formatPenaltyRemaining(profile.requesterPenaltyUntil!),
-            );
-          } else if (profile.hasActiveWorkerPenalty) {
-            penaltySubtitle = SettingsCopy.workerPenaltyUntil(
-              formatPenaltyRemaining(profile.workerPenaltyUntil!),
-            );
+          String penaltySubtitle = SettingsCopy.workerPenaltyNone;
+          if (profile != null) {
+            if (profile.hasActiveRequesterPenalty) {
+              penaltySubtitle = SettingsCopy.workerPenaltyUntil(
+                formatPenaltyRemaining(profile.requesterPenaltyUntil!),
+              );
+            } else if (profile.hasActiveWorkerPenalty) {
+              penaltySubtitle = SettingsCopy.workerPenaltyUntil(
+                formatPenaltyRemaining(profile.workerPenaltyUntil!),
+              );
+            }
           }
-        }
 
-        return SettingsTabScroll(
-          children: [
-            const TtmSettingsInfoBanner(
-              title: SettingsCopy.workerBannerTitle,
-              body: SettingsCopy.workerBannerBody,
-            ),
-            const SizedBox(height: TtmSpacing.xl),
-            Text(
-              SettingsCopy.workerDistanceTitle,
-              style: TtmTypography.title.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+          return SettingsTabScroll(
+            children: [
+              const TtmSettingsInfoBanner(
+                title: SettingsCopy.workerBannerTitle,
+                body: SettingsCopy.workerBannerBody,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              SettingsCopy.workerDistanceSubtitle,
-              style: TtmTypography.body.copyWith(
-                fontSize: 13,
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: TtmSpacing.md),
-            Wrap(
-              spacing: TtmSpacing.sm,
-              runSpacing: TtmSpacing.sm,
-              children: [
-                for (final km in [2.0, 3.0, 5.0])
-                  _KmChip(
-                    label: '${km.toInt()}km',
-                    selected: maxKm == km,
-                    onTap: _saving
-                        ? null
-                        : () => _savePresence(maxKm: km, tags: selected),
-                  ),
-              ],
-            ),
-            const SizedBox(height: TtmSpacing.xl),
-            Text(
-              SettingsCopy.workerTagsTitle,
-              style: TtmTypography.title.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              SettingsCopy.workerTagsSubtitle,
-              style: TtmTypography.body.copyWith(
-                fontSize: 13,
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: TtmSpacing.md),
-            Wrap(
-              spacing: TtmSpacing.sm,
-              runSpacing: TtmSpacing.sm,
-              children: [
-                for (final t in TtmRequestTags.all)
-                  _TagChipSmall(
-                    label: t,
-                    selected: selected.contains(t),
-                    onTap: _saving
-                        ? null
-                        : () {
-                            final next = Set<String>.from(selected);
-                            if (next.contains(t)) {
-                              if (next.length > 1) next.remove(t);
-                            } else {
-                              next.add(t);
-                            }
-                            _savePresence(maxKm: maxKm, tags: next);
-                          },
-                  ),
-              ],
-            ),
-            const SizedBox(height: TtmSpacing.xl),
-            const TtmSettingsInfoBanner(
-              title: SettingsCopy.workerLocationBannerTitle,
-              body: SettingsCopy.workerLocationBannerBody,
-            ),
-            const SizedBox(height: TtmSpacing.xl),
-            TtmSettingsGroup(
-              children: [
-                TtmSettingsTile(
-                  title: SettingsCopy.workerPenaltyTitle,
-                  subtitle: penaltySubtitle,
-                  showChevron: false,
-                  onTap: null,
+              const SizedBox(height: TtmSpacing.xl),
+              Text(
+                SettingsCopy.workerDistanceTitle,
+                style: TtmTypography.title.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
                 ),
-                TtmSettingsTile(
-                  title: SettingsCopy.workerGoHomeTitle,
-                  subtitle: SettingsCopy.workerGoHomeSubtitle,
-                  onTap: () {
-                    ref.read(homeTabIndexProvider.notifier).state = 0;
-                  },
+              ),
+              const SizedBox(height: 4),
+              Text(
+                SettingsCopy.workerDistanceSubtitle,
+                style: TtmTypography.body.copyWith(
+                  fontSize: 13,
+                  color: colors.onSurfaceVariant,
                 ),
-              ],
-            ),
-          ],
-        );
-      },
+              ),
+              const SizedBox(height: TtmSpacing.md),
+              Wrap(
+                spacing: TtmSpacing.sm,
+                runSpacing: TtmSpacing.sm,
+                children: [
+                  for (final distance in const [1000, 3000, 5000])
+                    _KmChip(
+                      label: '${distance ~/ 1000}km',
+                      selected: _maxDistanceMeters == distance,
+                      onTap: _saving
+                          ? null
+                          : () => _saveExerciseSettings(
+                              maxDistanceMeters: distance,
+                              exercises: Set<String>.from(_selectedExercises),
+                            ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: TtmSpacing.xl),
+              Text(
+                SettingsCopy.workerTagsTitle,
+                style: TtmTypography.title.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                SettingsCopy.workerTagsSubtitle,
+                style: TtmTypography.body.copyWith(
+                  fontSize: 13,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: TtmSpacing.md),
+              Wrap(
+                spacing: TtmSpacing.sm,
+                runSpacing: TtmSpacing.sm,
+                children: [
+                  for (final exercise in const [
+                    'walking',
+                    'running',
+                    'badminton',
+                    'basketball',
+                    'fitness',
+                  ])
+                    _TagChipSmall(
+                      label: exerciseLabel(exercise),
+                      selected: _selectedExercises.contains(exercise),
+                      onTap: _saving
+                          ? null
+                          : () {
+                              final next = Set<String>.from(_selectedExercises);
+                              if (next.contains(exercise)) {
+                                if (next.length > 1) next.remove(exercise);
+                              } else {
+                                next.add(exercise);
+                              }
+                              _saveExerciseSettings(
+                                maxDistanceMeters: _maxDistanceMeters,
+                                exercises: next,
+                              );
+                            },
+                    ),
+                ],
+              ),
+              const SizedBox(height: TtmSpacing.xl),
+              const TtmSettingsInfoBanner(
+                title: SettingsCopy.workerLocationBannerTitle,
+                body: SettingsCopy.workerLocationBannerBody,
+              ),
+              const SizedBox(height: TtmSpacing.xl),
+              TtmSettingsGroup(
+                children: [
+                  TtmSettingsTile(
+                    title: SettingsCopy.workerPenaltyTitle,
+                    subtitle: penaltySubtitle,
+                    showChevron: false,
+                    onTap: null,
+                  ),
+                  TtmSettingsTile(
+                    title: SettingsCopy.workerGoHomeTitle,
+                    subtitle: SettingsCopy.workerGoHomeSubtitle,
+                    onTap: () => context.push(AppRoutes.exercisePreferences),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +30,7 @@ class RaidHomeTab extends ConsumerWidget {
     final rewards = ref.watch(rewardSummaryProvider);
     final nearby = ref.watch(nearbyRaidsProvider);
     final mine = ref.watch(myRaidsProvider);
-    final top = MediaQuery.paddingOf(context).top;
+    final colors = Theme.of(context).colorScheme;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -36,6 +38,8 @@ class RaidHomeTab extends ConsumerWidget {
         ref.invalidate(myRaidsProvider);
         ref.invalidate(rewardSummaryProvider);
         ref.invalidate(raidRecruitmentOffersProvider);
+        ref.invalidate(exerciseMatchOffersProvider);
+        ref.invalidate(myQuickMatchProvider);
         await Future.wait([
           ref.read(nearbyRaidsProvider.future),
           ref.read(myRaidsProvider.future),
@@ -45,7 +49,7 @@ class RaidHomeTab extends ConsumerWidget {
       child: ListView(
         padding: EdgeInsets.fromLTRB(
           TtmSpacing.lg,
-          top + TtmSpacing.md,
+          TtmSpacing.md,
           TtmSpacing.lg,
           120,
         ),
@@ -88,6 +92,7 @@ class RaidHomeTab extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: TtmSpacing.md),
+          const _ExerciseMatchOffersSection(),
           const _RecruitmentOffersSection(),
           const SizedBox(height: TtmSpacing.lg),
           rewards.when(
@@ -106,12 +111,12 @@ class RaidHomeTab extends ConsumerWidget {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: colors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.flash_on_rounded,
-                    color: Colors.white,
+                    color: colors.primary,
                     size: 30,
                   ),
                 ),
@@ -123,20 +128,23 @@ class RaidHomeTab extends ConsumerWidget {
                       Text(
                         '지금 운동 매칭',
                         style: TtmTypography.title.copyWith(
-                          color: Colors.white,
+                          color: colors.onSurface,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         '가까운 운동 파트너를 바로 찾아요',
                         style: TtmTypography.label.copyWith(
-                          color: Colors.white.withValues(alpha: 0.86),
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  color: colors.onSurfaceVariant,
+                ),
               ],
             ),
           ),
@@ -231,6 +239,161 @@ class RaidHomeTab extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _ExerciseMatchOffersSection extends ConsumerStatefulWidget {
+  const _ExerciseMatchOffersSection();
+
+  @override
+  ConsumerState<_ExerciseMatchOffersSection> createState() =>
+      _ExerciseMatchOffersSectionState();
+}
+
+class _ExerciseMatchOffersSectionState
+    extends ConsumerState<_ExerciseMatchOffersSection> {
+  Timer? _timer;
+  String? _busyId;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && _busyId == null) {
+        ref.invalidate(exerciseMatchOffersProvider);
+        ref.invalidate(myQuickMatchProvider);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offers = ref.watch(exerciseMatchOffersProvider);
+    return offers.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const TtmSectionHeader(title: '도착한 1:1 운동 매칭'),
+            const SizedBox(height: TtmSpacing.sm),
+            for (final offer in items) ...[
+              _ExerciseMatchOfferCard(
+                offer: offer,
+                busy: _busyId == offer.id,
+                onAccept: () => _respond(offer, true),
+                onDecline: () => _respond(offer, false),
+              ),
+              const SizedBox(height: TtmSpacing.sm),
+            ],
+            const SizedBox(height: TtmSpacing.md),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _respond(ExerciseMatchOffer offer, bool accept) async {
+    if (_busyId != null) return;
+    setState(() => _busyId = offer.id);
+    try {
+      ExerciseLocationSnapshot? location;
+      if (accept) {
+        location = await ref.read(exerciseLocationServiceProvider).current();
+      }
+      final result = await ref
+          .read(raidRepositoryProvider)
+          .respondQuickMatchOffer(
+            offerId: offer.id,
+            accept: accept,
+            location: location,
+          );
+      if (!mounted) return;
+      final ok = result['ok'] == true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? (accept ? '1:1 운동 매칭이 확정됐어요.' : '이번 제안을 거절했어요.')
+                : exerciseLocationMessage(result['reason']?.toString() ?? ''),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      ref.invalidate(exerciseMatchOffersProvider);
+      ref.invalidate(myQuickMatchProvider);
+      if (ok && accept) context.push(AppRoutes.quickMatch);
+    } on ExerciseLocationException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(exerciseLocationMessage(error.reason))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+}
+
+class _ExerciseMatchOfferCard extends StatelessWidget {
+  const _ExerciseMatchOfferCard({
+    required this.offer,
+    required this.busy,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  final ExerciseMatchOffer offer;
+  final bool busy;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  @override
+  Widget build(BuildContext context) => TtmTierCard(
+    tier: TtmCardTier.status,
+    padding: const EdgeInsets.all(TtmSpacing.md),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '${offer.requester?['nickname'] ?? '운동 파트너'}님의 제안',
+          style: TtmTypography.title,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${exerciseLabel(offer.exerciseType)} · ${offer.meetingLabel}\n'
+          '${offer.durationMinutes}분 · '
+          '${(offer.distanceMeters / 1000).toStringAsFixed(1)}km',
+          style: TtmTypography.body,
+        ),
+        const SizedBox(height: TtmSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: busy ? null : onDecline,
+                child: const Text('거절'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                onPressed: busy ? null : onAccept,
+                child: const Text('함께 운동'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _RecruitmentOffersSection extends ConsumerStatefulWidget {
@@ -382,6 +545,7 @@ class _LevelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final number = NumberFormat.decimalPattern('ko');
+    final colors = Theme.of(context).colorScheme;
     return TtmTierCard(
       tier: TtmCardTier.mission,
       padding: const EdgeInsets.all(TtmSpacing.lg),
@@ -394,10 +558,10 @@ class _LevelCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: colors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.bolt_rounded, color: Colors.white),
+                child: Icon(Icons.bolt_rounded, color: colors.primary),
               ),
               const SizedBox(width: TtmSpacing.md),
               Expanded(
@@ -406,21 +570,23 @@ class _LevelCard extends StatelessWidget {
                   children: [
                     Text(
                       'Lv.${summary.level} ${summary.levelTitle}',
-                      style: TtmTypography.title.copyWith(color: Colors.white),
+                      style: TtmTypography.title.copyWith(
+                        color: colors.onSurface,
+                      ),
                     ),
                     Text(
                       '사용 가능 ${number.format(summary.availablePoints)}P',
                       style: TtmTypography.label.copyWith(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 16,
-                color: Colors.white,
+                color: colors.onSurfaceVariant,
               ),
             ],
           ),
@@ -430,8 +596,8 @@ class _LevelCard extends StatelessWidget {
             child: LinearProgressIndicator(
               minHeight: 8,
               value: summary.levelProgress,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
-              valueColor: const AlwaysStoppedAnimation(Colors.white),
+              backgroundColor: colors.primary.withValues(alpha: 0.14),
+              valueColor: AlwaysStoppedAnimation(colors.primary),
             ),
           ),
           const SizedBox(height: 6),
@@ -439,9 +605,7 @@ class _LevelCard extends StatelessWidget {
             summary.nextRequiredPoints == null
                 ? '최고 레벨에 도달했어요'
                 : '다음 레벨까지 ${number.format(summary.nextRequiredPoints! - summary.lifetimePoints)}P',
-            style: TtmTypography.label.copyWith(
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
+            style: TtmTypography.label.copyWith(color: colors.onSurfaceVariant),
           ),
         ],
       ),

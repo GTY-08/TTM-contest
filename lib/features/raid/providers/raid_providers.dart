@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/providers/auth_providers.dart';
+import '../../chat/models/chat_message.dart';
 import '../models/exercise_matching_models.dart';
 import '../models/raid_models.dart';
 import '../repositories/raid_repository.dart';
@@ -122,6 +123,16 @@ final raidMessagesProvider = StreamProvider.autoDispose
       return ref.watch(raidRepositoryProvider).watchMessages(raidId);
     });
 
+final raidApplicationMessagesProvider = StreamProvider.autoDispose
+    .family<({List<ChatMessage> messages, ChatReadState reads}), String>((
+      ref,
+      participantId,
+    ) {
+      return ref
+          .watch(raidRepositoryProvider)
+          .watchApplicationMessages(participantId);
+    });
+
 final exercisePreferencesProvider = FutureProvider<ExercisePreferences>((ref) {
   ref.watch(authUserIdProvider);
   return ref.watch(raidRepositoryProvider).fetchExercisePreferences();
@@ -140,8 +151,18 @@ final exerciseMatchOffersProvider = FutureProvider<List<ExerciseMatchOffer>>((
 });
 
 final quickMatchMessagesProvider = StreamProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, quickMatchId) {
+    .family<({List<ChatMessage> messages, ChatReadState reads}), String>((
+      ref,
+      quickMatchId,
+    ) {
       return ref.watch(raidRepositoryProvider).watchQuickMessages(quickMatchId);
+    });
+
+final quickMatchLocationsProvider = StreamProvider.autoDispose
+    .family<List<ExerciseQuickMatchLocation>, String>((ref, quickMatchId) {
+      return ref
+          .watch(raidRepositoryProvider)
+          .watchQuickMatchLocations(quickMatchId);
     });
 
 final raidRecruitmentProvider = FutureProvider.autoDispose

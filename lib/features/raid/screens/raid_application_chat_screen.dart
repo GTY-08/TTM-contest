@@ -3,45 +3,44 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:postgrest/postgrest.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/display_nickname.dart';
-import '../../../core/utils/pedestrian_location.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/providers/auth_providers.dart';
 import '../../../shared/widgets/ttm_premium_nickname.dart';
 import '../../chat/models/chat_message.dart';
 import '../../chat/widgets/chat_message_bubble.dart';
 import '../../profile/widgets/profile_photo_change.dart';
-import '../models/exercise_matching_models.dart';
+import '../models/raid_models.dart';
 import '../providers/raid_providers.dart';
-import '../widgets/quick_match_live_map.dart';
 
-class ExerciseQuickChatScreen extends ConsumerStatefulWidget {
-  const ExerciseQuickChatScreen({super.key, required this.quickMatchId});
+class RaidApplicationChatScreen extends ConsumerStatefulWidget {
+  const RaidApplicationChatScreen({
+    super.key,
+    required this.raidId,
+    required this.participantId,
+  });
 
-  final String quickMatchId;
+  final String raidId;
+  final String participantId;
 
   @override
-  ConsumerState<ExerciseQuickChatScreen> createState() =>
-      _ExerciseQuickChatScreenState();
+  ConsumerState<RaidApplicationChatScreen> createState() =>
+      _RaidApplicationChatScreenState();
 }
 
 enum _ImagePickMode { gallery, camera }
 
-class _ExerciseQuickChatScreenState
-    extends ConsumerState<ExerciseQuickChatScreen> {
+class _RaidApplicationChatScreenState
+    extends ConsumerState<RaidApplicationChatScreen> {
   final _composer = TextEditingController();
   final _scroll = ScrollController();
-  StreamSubscription<Position>? _locationSubscription;
-  String? _trackingMatchId;
   bool _sending = false;
   bool _pickingImage = false;
-  bool _mapExpanded = true;
   bool _initialScrollDone = false;
   bool _forceScrollToEnd = false;
   int _lastMessageCount = 0;
@@ -56,7 +55,6 @@ class _ExerciseQuickChatScreenState
 
   @override
   void dispose() {
-    _locationSubscription?.cancel();
     _composer.dispose();
     _scroll.dispose();
     super.dispose();
@@ -64,31 +62,26 @@ class _ExerciseQuickChatScreenState
 
   @override
   Widget build(BuildContext context) {
+    final detailAsync = ref.watch(raidDetailProvider(widget.raidId));
+    final detail = detailAsync.valueOrNull;
+    final messagesProvider = raidApplicationMessagesProvider(
+      widget.participantId,
+    );
+    final messagesAsync = ref.watch(messagesProvider);
     final uid = ref.watch(authUserIdProvider);
     final myProfile = ref.watch(myProfileProvider).valueOrNull;
-    final matchAsync = ref.watch(myQuickMatchProvider);
-    final currentMatch = matchAsync.valueOrNull;
-    final match = currentMatch?.id == widget.quickMatchId ? currentMatch : null;
-    if (match?.isMatched == true && _trackingMatchId != match!.id) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(_startLocationTracking(match));
-      });
-    }
-
-    final messagesProvider = quickMatchMessagesProvider(widget.quickMatchId);
-    final messagesAsync = ref.watch(messagesProvider);
-    final locationsAsync = ref.watch(
-      quickMatchLocationsProvider(widget.quickMatchId),
+    final participant = _participantFrom(detail);
+    final isApplicant = participant?.userId == uid;
+    final counterpart = _counterpartFrom(
+      detail: detail,
+      participant: participant,
+      isApplicant: isApplicant,
     );
-    final locations = locationsAsync.valueOrNull ?? const [];
-    final myLocation = _locationFor(locations, uid);
-    final partnerId = match == null || uid == null
-        ? null
-        : (match.requesterId == uid ? match.matchedUserId : match.requesterId);
-    final partnerLocation = _locationFor(locations, partnerId);
-    final counterpart = _counterpartFrom(match?.partner);
     final counterpartName = ttmDisplayNickname(counterpart?.nickname);
-    final canSend = match?.isMatched == true;
+    final readOnly =
+        participant == null ||
+        {'rejected', 'cancelled'}.contains(participant.status) ||
+        {'completed', 'cancelled'}.contains(detail?.raid.status);
 
     ref.listen<AsyncValue<({List<ChatMessage> messages, ChatReadState reads})>>(
       messagesProvider,
@@ -122,69 +115,53 @@ class _ExerciseQuickChatScreenState
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(counterpart == null ? '운동 파트너 채팅' : counterpartName),
+        title: Text(counterpart == null ? '지원자 채팅' : counterpartName),
         scrolledUnderElevation: 0,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _QuickPartnerHeader(
+          _RaidChatHeader(
             counterpart: counterpart,
-            loading: matchAsync.isLoading,
+            loading: detailAsync.isLoading,
+            roleLabel: isApplicant ? '매칭 운영자' : '지원자',
           ),
-          InkWell(
-            onTap: () => setState(() => _mapExpanded = !_mapExpanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: TtmSpacing.lg,
-                vertical: TtmSpacing.sm,
+          if (participant?.applicationMessage?.isNotEmpty == true)
+            Container(
+              margin: const EdgeInsets.fromLTRB(
+                TtmSpacing.lg,
+                TtmSpacing.sm,
+                TtmSpacing.lg,
+                0,
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.map_rounded,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: TtmSpacing.sm),
-                  const Expanded(
-                    child: Text(
-                      '실시간 위치',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Text(
-                    partnerLocation == null ? '상대 위치 대기 중' : '위치 공유 중',
-                    style: TtmTypography.label.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Icon(
-                    _mapExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                  ),
-                ],
+              padding: const EdgeInsets.all(TtmSpacing.md),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                '지원 메시지\n${participant!.applicationMessage}',
+                style: TtmTypography.body,
               ),
             ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 180),
-            crossFadeState: _mapExpanded
-                ? CrossFadeState.showFirst
-                : CrossFadeState.showSecond,
-            firstChild: QuickMatchLiveMap(
-              meetingLatitude: match?.latitude,
-              meetingLongitude: match?.longitude,
-              myLatitude: myLocation?.latitude,
-              myLongitude: myLocation?.longitude,
-              partnerLatitude: partnerLocation?.latitude,
-              partnerLongitude: partnerLocation?.longitude,
-              partnerLabel: counterpartName,
-              height: 250,
+          if (readOnly)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                TtmSpacing.lg,
+                TtmSpacing.sm,
+                TtmSpacing.lg,
+                0,
+              ),
+              child: Text(
+                '종료된 지원이에요. 대화는 읽기만 가능해요.',
+                textAlign: TextAlign.center,
+                style: TtmTypography.label.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
-            secondChild: const SizedBox.shrink(),
-          ),
           Expanded(
             child: messagesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -192,7 +169,7 @@ class _ExerciseQuickChatScreenState
                 child: Padding(
                   padding: const EdgeInsets.all(TtmSpacing.xl),
                   child: Text(
-                    '메시지를 불러오지 못했어요.\n$error',
+                    '채팅을 불러오지 못했어요.\n$error',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -202,7 +179,7 @@ class _ExerciseQuickChatScreenState
                 if (messages.isEmpty) {
                   return Center(
                     child: Text(
-                      canSend ? '첫 메시지를 남겨 보세요.' : '종료된 매칭이에요.',
+                      readOnly ? '저장된 메시지가 없어요.' : '첫 메시지를 남겨 보세요.',
                       style: TtmTypography.body.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -252,130 +229,82 @@ class _ExerciseQuickChatScreenState
               },
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                TtmSpacing.md,
-                TtmSpacing.sm,
-                TtmSpacing.md,
-                TtmSpacing.md,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  IconButton(
-                    onPressed: !canSend || _sending || _pickingImage
-                        ? null
-                        : _pickAndSendImage,
-                    tooltip: '사진 보내기',
-                    icon: _pickingImage
-                        ? const SizedBox.square(
-                            dimension: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.image_outlined),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _composer,
-                      enabled: canSend,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.newline,
-                      decoration: InputDecoration(
-                        hintText: canSend ? '메시지 입력' : '종료된 매칭입니다',
-                        filled: true,
-                        fillColor: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest
-                            .withValues(alpha: 0.35),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(999),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(999),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(999),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 1.5,
+          if (!readOnly)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TtmSpacing.md,
+                  TtmSpacing.sm,
+                  TtmSpacing.md,
+                  TtmSpacing.md,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: _sending || _pickingImage
+                          ? null
+                          : _pickAndSendImage,
+                      tooltip: '사진 보내기',
+                      icon: _pickingImage
+                          ? const SizedBox.square(
+                              dimension: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.image_outlined),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _composer,
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.newline,
+                        decoration: InputDecoration(
+                          hintText: '메시지 입력',
+                          filled: true,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.35),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: TtmSpacing.sm),
-                  IconButton.filled(
-                    onPressed: !canSend || _sending ? null : _send,
-                    icon: _sending
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.send_rounded),
-                  ),
-                ],
+                    const SizedBox(width: TtmSpacing.sm),
+                    IconButton.filled(
+                      onPressed: _sending ? null : _send,
+                      icon: _sending
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
-  }
-
-  ExerciseQuickMatchLocation? _locationFor(
-    List<ExerciseQuickMatchLocation> locations,
-    String? userId,
-  ) {
-    if (userId == null) return null;
-    for (final location in locations) {
-      if (location.userId == userId) return location;
-    }
-    return null;
-  }
-
-  AppUser? _counterpartFrom(Map<String, dynamic>? map) {
-    if (map == null || map['id'] == null) return null;
-    return AppUser.fromMap(map);
-  }
-
-  Future<void> _startLocationTracking(ExerciseQuickMatch match) async {
-    if (_trackingMatchId == match.id) return;
-    _trackingMatchId = match.id;
-    await _locationSubscription?.cancel();
-    final initial = await TtmPedestrianLocation.obtainPosition();
-    if (initial != null) await _publishLocation(match.id, initial);
-    if (!mounted || _trackingMatchId != match.id) return;
-    _locationSubscription =
-        Geolocator.getPositionStream(
-          locationSettings: TtmPedestrianLocation.streamSettings(),
-        ).listen((position) {
-          if (!TtmPedestrianLocation.isReliableForPublish(position)) return;
-          unawaited(_publishLocation(match.id, position));
-        });
-  }
-
-  Future<void> _publishLocation(String matchId, Position position) async {
-    try {
-      await ref
-          .read(raidRepositoryProvider)
-          .updateQuickMatchLocation(
-            quickMatchId: matchId,
-            location: ExerciseLocationSnapshot(
-              latitude: position.latitude,
-              longitude: position.longitude,
-              accuracyMeters: position.accuracy,
-              capturedAt: position.timestamp,
-            ),
-          );
-    } catch (_) {}
   }
 
   bool get _isNearBottom {
@@ -400,15 +329,47 @@ class _ExerciseQuickChatScreenState
     }
   }
 
+  RaidParticipant? _participantFrom(RaidDetail? detail) {
+    if (detail == null) return null;
+    for (final participant in detail.participants) {
+      if (participant.id == widget.participantId) return participant;
+    }
+    final mine = detail.raid.myParticipant;
+    return mine?.id == widget.participantId ? mine : null;
+  }
+
+  AppUser? _counterpartFrom({
+    required RaidDetail? detail,
+    required RaidParticipant? participant,
+    required bool isApplicant,
+  }) {
+    if (isApplicant) {
+      final organizer = detail?.organizer;
+      if (organizer == null || organizer['id'] == null) return null;
+      return AppUser.fromMap(organizer);
+    }
+    if (participant == null) return null;
+    return AppUser.fromMap({
+      'id': participant.userId,
+      'nickname': participant.nickname,
+      'profile_image_url': participant.profileImageUrl,
+      'rating': participant.rating,
+      'is_premium': participant.isPremium,
+    });
+  }
+
   Future<void> _send() async {
-    final text = _composer.text.trim();
-    if (text.isEmpty || _sending) return;
+    final content = _composer.text.trim();
+    if (content.isEmpty || _sending) return;
     setState(() => _sending = true);
     _forceScrollToEnd = true;
     try {
       final result = await ref
           .read(raidRepositoryProvider)
-          .sendQuickMessage(widget.quickMatchId, text);
+          .sendApplicationMessage(
+            participantId: widget.participantId,
+            content: content,
+          );
       if (!mounted) return;
       if (result['ok'] == true) {
         _composer.clear();
@@ -479,8 +440,8 @@ class _ExerciseQuickChatScreenState
       }
       await ref
           .read(raidRepositoryProvider)
-          .sendQuickImageMessages(
-            quickMatchId: widget.quickMatchId,
+          .sendApplicationImageMessages(
+            participantId: widget.participantId,
             files: picked.map((image) => File(image.path)).toList(),
           );
       if (mounted) await _markRead();
@@ -499,7 +460,7 @@ class _ExerciseQuickChatScreenState
     try {
       await ref
           .read(raidRepositoryProvider)
-          .markQuickMatchChatRead(widget.quickMatchId);
+          .markApplicationChatRead(widget.participantId);
     } catch (_) {}
   }
 
@@ -508,11 +469,16 @@ class _ExerciseQuickChatScreenState
   );
 }
 
-class _QuickPartnerHeader extends StatelessWidget {
-  const _QuickPartnerHeader({required this.counterpart, required this.loading});
+class _RaidChatHeader extends StatelessWidget {
+  const _RaidChatHeader({
+    required this.counterpart,
+    required this.loading,
+    required this.roleLabel,
+  });
 
   final AppUser? counterpart;
   final bool loading;
+  final String roleLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -559,8 +525,9 @@ class _QuickPartnerHeader extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '1:1 운동 파트너',
+                        roleLabel,
                         style: TtmTypography.label.copyWith(
+                          fontSize: 12,
                           color: colors.onSurfaceVariant,
                         ),
                       ),

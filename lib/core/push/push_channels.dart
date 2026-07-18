@@ -18,6 +18,15 @@ abstract final class PushTypes {
   static const chatMessage = 'chat_message';
   static const exerciseMatchOffer = 'exercise_match_offer';
   static const exerciseMatchMatched = 'exercise_match_matched';
+  static const exerciseMatchMessage = 'exercise_match_message';
   static const raidRecruitmentOffer = 'raid_recruitment_offer';
   static const raidRecruitmentApplication = 'raid_recruitment_application';
+  static const raidApplicationReceived = 'raid_application_received';
+  static const raidApplicationApproved = 'raid_application_approved';
+  static const raidApplicationWaitlisted = 'raid_application_waitlisted';
+  static const raidApplicationRejected = 'raid_application_rejected';
+  static const raidParticipantJoined = 'raid_participant_joined';
+  static const raidParticipantCancelled = 'raid_participant_cancelled';
+  static const raidStarted = 'raid_started';
+  static const raidApplicationMessage = 'raid_application_message';
 }

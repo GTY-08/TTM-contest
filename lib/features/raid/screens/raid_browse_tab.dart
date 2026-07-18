@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
@@ -11,6 +12,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/naver_map_support.dart';
 import '../../../shared/widgets/ttm_empty_state.dart';
+import '../../match/widgets/map_gesture_guard.dart';
 import '../models/exercise_matching_models.dart';
 import '../models/raid_models.dart';
 import '../providers/raid_providers.dart';
@@ -26,22 +28,34 @@ class RaidBrowseTab extends ConsumerStatefulWidget {
 
 class _RaidBrowseTabState extends ConsumerState<RaidBrowseTab> {
   String _exercise = 'all';
-  String _price = 'all';
   int? _distanceMeters;
   bool _showMap = true;
-  bool _loadingMore = false;
-  bool _hasMore = true;
-  final List<Raid> _extraRaids = [];
+  bool _locationLoading = false;
+  bool _placeSearchBusy = false;
+  ExerciseLocationSnapshot? _mapLocation;
+  RaidPlaceSearchResult? _searchedPlace;
+  final TextEditingController _placeSearchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_loadMapLocation(showMessage: false));
+    });
+  }
+
+  @override
+  void dispose() {
+    _placeSearchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final raids = ref.watch(raidBrowseProvider);
     return RefreshIndicator(
       onRefresh: () async {
-        setState(() {
-          _extraRaids.clear();
-          _hasMore = true;
-        });
+        await _loadMapLocation(showMessage: false);
         ref.invalidate(raidBrowseProvider);
         await ref.read(raidBrowseProvider.future);
       },
@@ -63,11 +77,7 @@ class _RaidBrowseTabState extends ConsumerState<RaidBrowseTab> {
           ],
         ),
         data: (items) {
-          final baseIds = items.map((item) => item.id).toSet();
-          final displayItems = <Raid>[
-            ...items,
-            ..._extraRaids.where((item) => !baseIds.contains(item.id)),
-          ];
+          final displayItems = items;
           return ListView(
             padding: const EdgeInsets.fromLTRB(
               TtmSpacing.lg,
@@ -94,8 +104,49 @@ class _RaidBrowseTabState extends ConsumerState<RaidBrowseTab> {
                 ],
               ),
               const SizedBox(height: TtmSpacing.md),
+              TextField(
+                controller: _placeSearchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _searchPlace(),
+                decoration: InputDecoration(
+                  hintText: '주소나 장소 검색',
+                  prefixIcon: const Icon(Icons.place_outlined),
+                  suffixIcon: _placeSearchBusy
+                      ? const Padding(
+                          padding: EdgeInsets.all(13),
+                          child: SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : IconButton(
+                          tooltip: '검색',
+                          onPressed: _searchPlace,
+                          icon: const Icon(Icons.search_rounded),
+                        ),
+                ),
+              ),
+              if (_searchedPlace != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '검색 위치 · ${_searchedPlace!.label}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TtmTypography.label.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: TtmSpacing.md),
               if (_showMap) ...[
-                _RaidMap(raids: displayItems),
+                _RaidMap(
+                  raids: displayItems,
+                  currentLocation: _mapLocation,
+                  searchedPlace: _searchedPlace,
+                  locationLoading: _locationLoading,
+                  onRequestLocation: () => _loadMapLocation(showMessage: true),
+                  onRaidTap: _showRaidPreview,
+                ),
                 const SizedBox(height: TtmSpacing.md),
               ],
               SingleChildScrollView(
@@ -141,17 +192,6 @@ class _RaidBrowseTabState extends ConsumerState<RaidBrowseTab> {
                   ],
                 ),
               ),
-              const SizedBox(height: TtmSpacing.sm),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'all', label: Text('전체')),
-                  ButtonSegment(value: 'free', label: Text('무료')),
-                  ButtonSegment(value: 'paid', label: Text('운영자 레이드')),
-                ],
-                selected: {_price},
-                onSelectionChanged: (value) => _setPrice(value.first),
-                showSelectedIcon: false,
-              ),
               const SizedBox(height: TtmSpacing.lg),
               Text(
                 '${displayItems.length}개의 레이드',
@@ -173,21 +213,6 @@ class _RaidBrowseTabState extends ConsumerState<RaidBrowseTab> {
                   ),
                   const SizedBox(height: TtmSpacing.sm),
                 ],
-              if (displayItems.isNotEmpty && _hasMore) ...[
-                const SizedBox(height: TtmSpacing.sm),
-                OutlinedButton.icon(
-                  onPressed: _loadingMore
-                      ? null
-                      : () => _loadMore(displayItems),
-                  icon: _loadingMore
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.expand_more_rounded),
-                  label: Text(_loadingMore ? '불러오는 중' : '레이드 더 보기'),
-                ),
-              ],
             ],
           );
         },
@@ -196,89 +221,228 @@ class _RaidBrowseTabState extends ConsumerState<RaidBrowseTab> {
   }
 
   void _setDistance(int? value) {
-    setState(() {
-      _distanceMeters = value;
-      _extraRaids.clear();
-      _hasMore = true;
-    });
+    setState(() => _distanceMeters = value);
     ref.read(raidBrowseQueryProvider.notifier).state = RaidBrowseQuery(
       radiusMeters: value,
       exerciseType: _exercise,
-      feeType: _price,
     );
   }
 
   void _setExercise(String value) {
-    setState(() {
-      _exercise = value;
-      _extraRaids.clear();
-      _hasMore = true;
-    });
+    setState(() => _exercise = value);
     ref.read(raidBrowseQueryProvider.notifier).state = RaidBrowseQuery(
       radiusMeters: _distanceMeters,
       exerciseType: value,
-      feeType: _price,
     );
   }
 
-  void _setPrice(String value) {
-    setState(() {
-      _price = value;
-      _extraRaids.clear();
-      _hasMore = true;
-    });
-    ref.read(raidBrowseQueryProvider.notifier).state = RaidBrowseQuery(
-      radiusMeters: _distanceMeters,
-      exerciseType: _exercise,
-      feeType: value,
-    );
-  }
+  Future<void> _showRaidPreview(Raid raid) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          TtmSpacing.lg,
+          TtmSpacing.sm,
+          TtmSpacing.lg,
+          TtmSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('레이드 정보', style: TtmTypography.title.copyWith(fontSize: 20)),
+            const SizedBox(height: TtmSpacing.md),
+            RaidCard(
+              raid: raid,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('${AppRoutes.raidRoot}/${raid.id}');
+              },
+            ),
+            const SizedBox(height: TtmSpacing.md),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(sheetContext).pop();
+                context.push('${AppRoutes.raidRoot}/${raid.id}');
+              },
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('자세히 보기'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
-  Future<void> _loadMore(List<Raid> current) async {
-    if (_loadingMore || current.isEmpty) return;
-    setState(() => _loadingMore = true);
+  Future<void> _loadMapLocation({required bool showMessage}) async {
+    if (_locationLoading) return;
+    setState(() => _locationLoading = true);
     try {
-      ExerciseLocationSnapshot? location;
-      try {
-        location = await ref
-            .read(exerciseLocationServiceProvider)
-            .current(request: _distanceMeters != null);
-      } on ExerciseLocationException {
-        if (_distanceMeters != null) rethrow;
-      }
-      final last = current.last;
-      final next = await ref
-          .read(raidRepositoryProvider)
-          .fetchRaids(
-            latitude: location?.latitude,
-            longitude: location?.longitude,
-            radiusM: _distanceMeters,
-            exerciseType: _exercise,
-            feeType: _price,
-            cursorStartsAt: last.startsAt,
-            cursorId: last.id,
-          );
+      final location = await ref
+          .read(exerciseLocationServiceProvider)
+          .current();
       if (!mounted) return;
-      final known = current.map((item) => item.id).toSet();
-      setState(() {
-        _extraRaids.addAll(next.where((item) => !known.contains(item.id)));
-        _hasMore = next.length == 30;
-      });
+      setState(() => _mapLocation = location);
+      ref.invalidate(raidBrowseProvider);
     } on ExerciseLocationException catch (error) {
-      if (mounted) {
+      if (mounted && showMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(exerciseLocationMessage(error.reason))),
         );
       }
     } finally {
-      if (mounted) setState(() => _loadingMore = false);
+      if (mounted) setState(() => _locationLoading = false);
     }
+  }
+
+  Future<void> _searchPlace() async {
+    final query = _placeSearchController.text.trim();
+    if (query.length < 2) {
+      _showMessage('검색어를 두 글자 이상 입력해 주세요.');
+      return;
+    }
+    if (_placeSearchBusy) return;
+    setState(() => _placeSearchBusy = true);
+    try {
+      final results = await ref
+          .read(raidRepositoryProvider)
+          .searchPlaces(query);
+      if (!mounted) return;
+      if (results.isEmpty) {
+        _showMessage('검색 결과가 없어요. 다른 단어로 찾아보세요.');
+        return;
+      }
+      final sorted = [...results]
+        ..sort(
+          (a, b) => _distanceFromSearchOrigin(
+            a,
+          ).compareTo(_distanceFromSearchOrigin(b)),
+        );
+      final selected = sorted.length == 1
+          ? sorted.first
+          : await _showPlaceResults(sorted);
+      if (selected == null || !mounted) return;
+      setState(() {
+        _searchedPlace = selected;
+        _showMap = true;
+      });
+      _showMessage('${selected.label}(으)로 지도를 이동했어요.');
+    } catch (_) {
+      if (mounted) _showMessage('장소 검색에 실패했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _placeSearchBusy = false);
+    }
+  }
+
+  double _distanceFromSearchOrigin(RaidPlaceSearchResult place) {
+    final location = _mapLocation;
+    if (location == null) return 0;
+    return Geolocator.distanceBetween(
+      location.latitude,
+      location.longitude,
+      place.latitude,
+      place.longitude,
+    );
+  }
+
+  Future<RaidPlaceSearchResult?> _showPlaceResults(
+    List<RaidPlaceSearchResult> results,
+  ) {
+    return showModalBottomSheet<RaidPlaceSearchResult>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final colors = Theme.of(context).colorScheme;
+        return SafeArea(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(
+              TtmSpacing.lg,
+              TtmSpacing.sm,
+              TtmSpacing.lg,
+              TtmSpacing.lg,
+            ),
+            itemCount: results.length + 1,
+            separatorBuilder: (_, _) => Divider(
+              height: 1,
+              color: colors.outlineVariant.withValues(alpha: 0.45),
+            ),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: TtmSpacing.md),
+                  child: Text(
+                    '검색 결과',
+                    style: TtmTypography.title.copyWith(fontSize: 20),
+                  ),
+                );
+              }
+              final place = results[index - 1];
+              final distance = _distanceFromSearchOrigin(place);
+              final distanceText = _mapLocation == null
+                  ? ''
+                  : distance >= 1000
+                  ? '${(distance / 1000).toStringAsFixed(1)}km'
+                  : '${distance.round()}m';
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: colors.primaryContainer,
+                  child: Icon(
+                    place.source == 'local'
+                        ? Icons.storefront_rounded
+                        : Icons.location_on_outlined,
+                    color: colors.onPrimaryContainer,
+                  ),
+                ),
+                title: Text(
+                  place.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  [
+                    if (place.address.isNotEmpty) place.address,
+                    if (distanceText.isNotEmpty) distanceText,
+                  ].join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => Navigator.pop(context, place),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 }
 
 class _RaidMap extends StatefulWidget {
-  const _RaidMap({required this.raids});
+  const _RaidMap({
+    required this.raids,
+    required this.currentLocation,
+    required this.searchedPlace,
+    required this.locationLoading,
+    required this.onRequestLocation,
+    required this.onRaidTap,
+  });
+
   final List<Raid> raids;
+  final ExerciseLocationSnapshot? currentLocation;
+  final RaidPlaceSearchResult? searchedPlace;
+  final bool locationLoading;
+  final Future<void> Function() onRequestLocation;
+  final ValueChanged<Raid> onRaidTap;
 
   @override
   State<_RaidMap> createState() => _RaidMapState();
@@ -287,11 +451,31 @@ class _RaidMap extends StatefulWidget {
 class _RaidMapState extends State<_RaidMap> {
   NaverMapController? _controller;
   final Map<String, NMarker> _markers = {};
+  double _zoom = 14.5;
+
+  static const _fallback = NLatLng(37.5665, 126.9780);
 
   @override
   void didUpdateWidget(covariant _RaidMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.raids != widget.raids) unawaited(_syncMarkers());
+    final locationChanged =
+        oldWidget.currentLocation?.latitude !=
+            widget.currentLocation?.latitude ||
+        oldWidget.currentLocation?.longitude !=
+            widget.currentLocation?.longitude;
+    final searchChanged =
+        oldWidget.searchedPlace?.latitude != widget.searchedPlace?.latitude ||
+        oldWidget.searchedPlace?.longitude != widget.searchedPlace?.longitude;
+    if (oldWidget.raids != widget.raids || locationChanged || searchChanged) {
+      unawaited(_syncMarkers());
+    }
+    if (searchChanged && widget.searchedPlace != null) {
+      unawaited(_moveToSearchedPlace());
+      return;
+    }
+    if (locationChanged && widget.currentLocation != null) {
+      unawaited(_moveToCurrentLocation());
+    }
   }
 
   Future<void> _syncMarkers() async {
@@ -310,15 +494,99 @@ class _RaidMapState extends State<_RaidMap> {
         position: NLatLng(raid.venue.latitude, raid.venue.longitude),
         caption: NOverlayCaption(text: exerciseLabel(raid.exerciseType)),
       );
+      marker.setOnTapListener((_) => widget.onRaidTap(raid));
       _markers[raid.id] = marker;
-      await controller.addOverlay(marker);
+      try {
+        await controller.addOverlay(marker);
+      } catch (_) {}
     }
+    final location = widget.currentLocation;
+    if (location != null) {
+      final marker = NMarker(
+        id: 'current_location',
+        position: NLatLng(location.latitude, location.longitude),
+        caption: const NOverlayCaption(text: '내 위치'),
+      );
+      _markers['current_location'] = marker;
+      try {
+        await controller.addOverlay(marker);
+      } catch (_) {}
+    }
+    final searchedPlace = widget.searchedPlace;
+    if (searchedPlace != null) {
+      final marker = NMarker(
+        id: 'searched_place',
+        position: NLatLng(searchedPlace.latitude, searchedPlace.longitude),
+        caption: NOverlayCaption(text: searchedPlace.label),
+      );
+      _markers['searched_place'] = marker;
+      try {
+        await controller.addOverlay(marker);
+      } catch (_) {}
+    }
+  }
+
+  NLatLng get _initialTarget {
+    final searchedPlace = widget.searchedPlace;
+    if (searchedPlace != null) {
+      return NLatLng(searchedPlace.latitude, searchedPlace.longitude);
+    }
+    final location = widget.currentLocation;
+    if (location != null) return NLatLng(location.latitude, location.longitude);
+    for (final raid in widget.raids) {
+      if (raid.venue.latitude != 0 && raid.venue.longitude != 0) {
+        return NLatLng(raid.venue.latitude, raid.venue.longitude);
+      }
+    }
+    return _fallback;
+  }
+
+  Future<void> _moveToCurrentLocation() async {
+    final controller = _controller;
+    final location = widget.currentLocation;
+    if (controller == null || location == null) return;
+    _zoom = 15.5;
+    try {
+      await controller.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(
+          target: NLatLng(location.latitude, location.longitude),
+          zoom: _zoom,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _moveToSearchedPlace() async {
+    final controller = _controller;
+    final place = widget.searchedPlace;
+    if (controller == null || place == null) return;
+    _zoom = 17;
+    try {
+      await controller.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(
+          target: NLatLng(place.latitude, place.longitude),
+          zoom: _zoom,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _zoomBy(double delta) async {
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      final camera = await controller.getCameraPosition();
+      _zoom = (camera.zoom + delta).clamp(10, 20);
+      await controller.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(target: camera.target, zoom: _zoom),
+      );
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    if (!ttmSupportsEmbeddedNaverMap || widget.raids.isEmpty) {
+    if (!ttmSupportsEmbeddedNaverMap) {
       return Container(
         height: 180,
         decoration: BoxDecoration(
@@ -330,25 +598,108 @@ class _RaidMapState extends State<_RaidMap> {
         ),
       );
     }
-    final first = widget.raids.first.venue;
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
         height: 220,
-        child: NaverMap(
-          forceGesture: true,
-          options: NaverMapViewOptions(
-            initialCameraPosition: NCameraPosition(
-              target: NLatLng(first.latitude, first.longitude),
-              zoom: 13.5,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            MapGestureGuard(
+              child: NaverMap(
+                forceGesture: true,
+                options: NaverMapViewOptions(
+                  initialCameraPosition: NCameraPosition(
+                    target: _initialTarget,
+                    zoom: _zoom,
+                  ),
+                  scrollGesturesEnable: true,
+                  zoomGesturesEnable: true,
+                  rotationGesturesEnable: false,
+                  tiltGesturesEnable: false,
+                  consumeSymbolTapEvents: false,
+                ),
+                onMapReady: (controller) async {
+                  _controller = controller;
+                  await _syncMarkers();
+                  if (widget.searchedPlace != null) {
+                    await _moveToSearchedPlace();
+                  } else {
+                    await _moveToCurrentLocation();
+                  }
+                },
+              ),
             ),
-            rotationGesturesEnable: false,
-            tiltGesturesEnable: false,
-          ),
-          onMapReady: (controller) async {
-            _controller = controller;
-            await _syncMarkers();
-          },
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _MapControlButton(
+                    tooltip: '내 위치',
+                    onTap: widget.locationLoading
+                        ? null
+                        : () async {
+                            if (widget.currentLocation == null) {
+                              await widget.onRequestLocation();
+                            } else {
+                              await _moveToCurrentLocation();
+                            }
+                          },
+                    child: widget.locationLoading
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location_rounded, size: 21),
+                  ),
+                  const SizedBox(height: 6),
+                  _MapControlButton(
+                    tooltip: '확대',
+                    onTap: () => _zoomBy(1),
+                    child: const Icon(Icons.add_rounded, size: 22),
+                  ),
+                  const SizedBox(height: 6),
+                  _MapControlButton(
+                    tooltip: '축소',
+                    onTap: () => _zoomBy(-1),
+                    child: const Icon(Icons.remove_rounded, size: 22),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapControlButton extends StatelessWidget {
+  const _MapControlButton({
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  });
+
+  final String tooltip;
+  final Future<void> Function()? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: colors.surface.withValues(alpha: 0.94),
+        elevation: 2,
+        borderRadius: BorderRadius.circular(9),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(9),
+          child: SizedBox(width: 40, height: 40, child: Center(child: child)),
         ),
       ),
     );

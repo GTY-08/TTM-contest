@@ -11,6 +11,8 @@ import '../../../core/theme/ttm_card_tier.dart';
 import '../../../data/providers/auth_providers.dart';
 import '../../../shared/widgets/ttm_button.dart';
 import '../../../shared/widgets/ttm_tier_card.dart';
+import '../../match/widgets/radius_pulse.dart';
+import '../../match/widgets/stage_progress_bar.dart';
 import '../models/exercise_matching_models.dart';
 import '../models/raid_models.dart';
 import '../providers/raid_providers.dart';
@@ -28,7 +30,7 @@ class _ExerciseQuickMatchScreenState
     extends ConsumerState<ExerciseQuickMatchScreen> {
   Timer? _timer;
   bool _busy = false;
-  bool _online = false;
+  bool _polling = false;
   String _meetingSource = 'current';
   String? _venueId;
   String _exercise = 'walking';
@@ -58,86 +60,92 @@ class _ExerciseQuickMatchScreenState
     final offers = ref.watch(exerciseMatchOffersProvider);
     final preferences = ref.watch(exercisePreferencesProvider);
     final venues = ref.watch(exerciseVenuesProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('지금 운동 매칭'),
-        actions: [
-          IconButton(
-            tooltip: '운동 설정',
-            onPressed: () => context.push(AppRoutes.exercisePreferences),
-            icon: const Icon(Icons.tune_rounded),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            TtmSpacing.lg,
-            TtmSpacing.md,
-            TtmSpacing.lg,
-            60,
-          ),
-          children: [
-            current.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (match) => match == null
-                  ? const SizedBox.shrink()
-                  : _CurrentMatchCard(
-                      match: match,
-                      busy: _busy,
-                      onCancel: () => _cancel(match.id),
-                      onComplete: () => _complete(match.id),
-                      onChat: () => context.push(
-                        '${AppRoutes.quickMatch}/${match.id}/chat',
-                      ),
-                    ),
-            ),
-            const SizedBox(height: TtmSpacing.md),
-            offers.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (items) => items.isEmpty
-                  ? const SizedBox.shrink()
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '도착한 운동 제안',
-                          style: TtmTypography.title.copyWith(fontSize: 18),
-                        ),
-                        const SizedBox(height: TtmSpacing.sm),
-                        for (final offer in items) ...[
-                          _OfferCard(
-                            offer: offer,
-                            busy: _busy,
-                            onAccept: () => _respondOffer(offer.id, true),
-                            onDecline: () => _respondOffer(offer.id, false),
-                          ),
-                          const SizedBox(height: TtmSpacing.sm),
-                        ],
-                      ],
-                    ),
-            ),
-            const SizedBox(height: TtmSpacing.md),
-            preferences.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => const Text('운동 설정을 불러오지 못했어요.'),
-              data: (prefs) => _AvailabilityCard(
-                online: _online,
-                busy: _busy,
-                onChanged: (value) => _setAvailability(value, prefs),
+    final presence = ref.watch(myWorkerPresenceProvider).valueOrNull;
+    final presenceStatus = presence?['status']?.toString();
+    final online = presenceStatus == 'online' || presenceStatus == 'busy';
+    final activeMatch = current.valueOrNull;
+    return PopScope(
+      canPop: activeMatch?.isSearching != true,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('지금 운동 매칭'),
+          actions: [
+            if (activeMatch == null)
+              IconButton(
+                tooltip: '운동 설정',
+                onPressed: () => context.push(AppRoutes.exercisePreferences),
+                icon: const Icon(Icons.tune_rounded),
               ),
-            ),
-            const SizedBox(height: TtmSpacing.lg),
-            current.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => _buildForm(venues),
-              data: (match) =>
-                  match == null ? _buildForm(venues) : const SizedBox.shrink(),
-            ),
           ],
+        ),
+        body: RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              TtmSpacing.lg,
+              TtmSpacing.md,
+              TtmSpacing.lg,
+              60,
+            ),
+            children: [
+              current.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (_, _) => const SizedBox.shrink(),
+                data: (match) => match == null
+                    ? const SizedBox.shrink()
+                    : _CurrentMatchCard(
+                        match: match,
+                        busy: _busy,
+                        onCancel: () => _cancel(match.id),
+                        onComplete: () => _complete(match.id),
+                        onChat: () => context.push(
+                          '${AppRoutes.quickMatch}/${match.id}/chat',
+                        ),
+                      ),
+              ),
+              if (activeMatch == null) ...[
+                const SizedBox(height: TtmSpacing.md),
+                offers.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (items) => items.isEmpty
+                      ? const SizedBox.shrink()
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              '도착한 운동 제안',
+                              style: TtmTypography.title.copyWith(fontSize: 18),
+                            ),
+                            const SizedBox(height: TtmSpacing.sm),
+                            for (final offer in items) ...[
+                              _OfferCard(
+                                offer: offer,
+                                busy: _busy,
+                                onAccept: () => _respondOffer(offer.id, true),
+                                onDecline: () => _respondOffer(offer.id, false),
+                              ),
+                              const SizedBox(height: TtmSpacing.sm),
+                            ],
+                          ],
+                        ),
+                ),
+                const SizedBox(height: TtmSpacing.md),
+                preferences.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, _) => const Text('운동 설정을 불러오지 못했어요.'),
+                  data: (prefs) => _AvailabilityCard(
+                    online: online,
+                    busy: _busy,
+                    onChanged: (value) => _setAvailability(value, prefs),
+                  ),
+                ),
+                const SizedBox(height: TtmSpacing.lg),
+                _buildForm(venues),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -317,7 +325,7 @@ class _ExerciseQuickMatchScreenState
             exerciseTypes: prefs.preferredExercises,
           ),
     );
-    if (mounted) setState(() => _online = value);
+    ref.invalidate(myWorkerPresenceProvider);
   }
 
   Future<void> _create(int duration, List<ExerciseVenue> venues) async {
@@ -386,12 +394,18 @@ class _ExerciseQuickMatchScreenState
       _run(() => ref.read(raidRepositoryProvider).completeQuickMatch(id));
 
   Future<void> _tick() async {
-    if (!mounted || _busy) return;
-    final match = ref.read(myQuickMatchProvider).valueOrNull;
-    if (match == null || !match.isSearching) return;
-    if (match.requesterId != ref.read(authUserIdProvider)) return;
-    await ref.read(raidRepositoryProvider).advanceQuickMatch(match.id);
-    if (mounted) await _refresh();
+    if (!mounted || _busy || _polling) return;
+    _polling = true;
+    try {
+      final match = ref.read(myQuickMatchProvider).valueOrNull;
+      if (match?.isSearching == true &&
+          match?.requesterId == ref.read(authUserIdProvider)) {
+        await ref.read(raidRepositoryProvider).advanceQuickMatch(match!.id);
+      }
+      if (mounted) await _refresh();
+    } finally {
+      _polling = false;
+    }
   }
 
   Future<void> _run(Future<Map<String, dynamic>> Function() action) async {
@@ -463,49 +477,61 @@ class _CurrentMatchCard extends StatelessWidget {
   final VoidCallback onChat;
 
   @override
-  Widget build(BuildContext context) => TtmTierCard(
-    tier: TtmCardTier.mission,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          match.isSearching ? '운동 파트너를 찾고 있어요' : '운동 매칭이 확정됐어요',
-          style: TtmTypography.title.copyWith(color: Colors.white),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          '${exerciseLabel(match.exerciseType)} · ${match.meetingLabel} · ${match.durationMinutes}분',
-          style: TtmTypography.body.copyWith(
-            color: Colors.white.withValues(alpha: 0.88),
-          ),
-        ),
-        const SizedBox(height: TtmSpacing.md),
-        if (match.isSearching) ...[
-          LinearProgressIndicator(value: match.currentStage / 10),
-          const SizedBox(height: 6),
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return TtmTierCard(
+      tier: TtmCardTier.mission,
+      padding: const EdgeInsets.all(TtmSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           Text(
-            '${match.currentStage}/10 단계 · 가까운 사람부터 범위를 넓히고 있어요',
-            style: TtmTypography.label.copyWith(color: Colors.white),
+            match.isSearching ? '운동 파트너를 찾고 있어요' : '1:1 운동 매칭이 확정됐어요',
+            textAlign: TextAlign.center,
+            style: TtmTypography.display.copyWith(
+              color: colors.onSurface,
+              fontSize: 22,
+            ),
           ),
-        ] else ...[
-          FilledButton.tonalIcon(
-            onPressed: busy ? null : onChat,
-            icon: const Icon(Icons.chat_bubble_outline),
-            label: const Text('1:1 채팅 열기'),
+          const SizedBox(height: 5),
+          Text(
+            '${exerciseLabel(match.exerciseType)} · ${match.meetingLabel} · ${match.durationMinutes}분',
+            textAlign: TextAlign.center,
+            style: TtmTypography.body.copyWith(color: colors.onSurfaceVariant),
           ),
-          const SizedBox(height: 6),
-          OutlinedButton(
-            onPressed: busy ? null : onComplete,
-            child: const Text('운동 완료'),
+          const SizedBox(height: TtmSpacing.lg),
+          if (match.isSearching) ...[
+            StageProgressBar(currentStage: match.currentStage),
+            const SizedBox(height: TtmSpacing.sm),
+            Text(
+              '단계 ${match.currentStage}/10 · 가까운 사람부터 범위를 넓히고 있어요',
+              textAlign: TextAlign.center,
+              style: TtmTypography.label.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: TtmSpacing.sm),
+            const Center(child: RadiusPulse(size: 170)),
+          ] else ...[
+            FilledButton.icon(
+              onPressed: busy ? null : onChat,
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('1:1 채팅 열기'),
+            ),
+            const SizedBox(height: 6),
+            OutlinedButton(
+              onPressed: busy ? null : onComplete,
+              child: const Text('운동 완료'),
+            ),
+          ],
+          TextButton(
+            onPressed: busy ? null : onCancel,
+            child: const Text('매칭 취소'),
           ),
         ],
-        TextButton(
-          onPressed: busy ? null : onCancel,
-          child: const Text('매칭 취소'),
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _OfferCard extends StatelessWidget {

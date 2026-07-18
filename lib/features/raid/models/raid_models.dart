@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+const raidDiscoveryWindow = Duration(hours: 6);
+const raidMinimumLeadTime = Duration(minutes: 10);
+
 @immutable
 class ExerciseVenue {
   const ExerciseVenue({
@@ -41,6 +44,43 @@ class ExerciseVenue {
     defaultIntensity: map['default_intensity']?.toString() ?? 'medium',
     beginnerFriendly: map['beginner_friendly'] != false,
   );
+}
+
+@immutable
+class RaidPlaceSearchResult {
+  const RaidPlaceSearchResult({
+    required this.label,
+    required this.address,
+    required this.source,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final String label;
+  final String address;
+  final String source;
+  final double latitude;
+  final double longitude;
+
+  factory RaidPlaceSearchResult.fromMap(Map<String, dynamic> map) {
+    final name = map['name']?.toString().trim() ?? '';
+    final road = map['roadAddress']?.toString().trim() ?? '';
+    final jibun = map['jibunAddress']?.toString().trim() ?? '';
+    return RaidPlaceSearchResult(
+      label: name.isNotEmpty ? name : (road.isNotEmpty ? road : jibun),
+      address: road.isNotEmpty ? road : jibun,
+      source: map['source']?.toString() ?? '',
+      latitude: _asDouble(map['lat']),
+      longitude: _asDouble(map['lng']),
+    );
+  }
+
+  bool get hasValidLocation =>
+      latitude >= -90 &&
+      latitude <= 90 &&
+      longitude >= -180 &&
+      longitude <= 180 &&
+      (latitude != 0 || longitude != 0);
 }
 
 @immutable
@@ -133,7 +173,7 @@ class Raid {
   final RaidParticipant? myParticipant;
   final int? distanceMeters;
 
-  bool get isFree => source == 'auto' || participationFee == 0;
+  bool get isFree => source == 'auto';
   bool get isPremiumRaid => source == 'premium';
   bool get isFull => participantCount >= maxParticipants;
   bool get isJoinable =>
@@ -243,6 +283,34 @@ class RaidMessage {
         DateTime.tryParse(map['created_at']?.toString() ?? '')?.toLocal() ??
         DateTime.now(),
   );
+}
+
+@immutable
+class RaidApplicationMessage {
+  const RaidApplicationMessage({
+    required this.id,
+    required this.participantId,
+    required this.senderId,
+    required this.content,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String participantId;
+  final String senderId;
+  final String content;
+  final DateTime createdAt;
+
+  factory RaidApplicationMessage.fromMap(Map<String, dynamic> map) =>
+      RaidApplicationMessage(
+        id: map['id']?.toString() ?? '',
+        participantId: map['participant_id']?.toString() ?? '',
+        senderId: map['sender_id']?.toString() ?? '',
+        content: map['content']?.toString() ?? '',
+        createdAt:
+            DateTime.tryParse(map['created_at']?.toString() ?? '')?.toLocal() ??
+            DateTime.now(),
+      );
 }
 
 @immutable

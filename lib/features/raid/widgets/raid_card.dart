@@ -119,13 +119,17 @@ class RaidCard extends StatelessWidget {
                     text: '초보자 가능',
                   ),
                 _InfoChip(
-                  icon: raid.isFree
-                      ? Icons.volunteer_activism_outlined
-                      : Icons.payments_outlined,
-                  text: raid.isFree
-                      ? '무료 레이드'
-                      : '${NumberFormat.decimalPattern('ko').format(raid.participationFee)}원',
+                  icon: raid.isPremiumRaid
+                      ? Icons.groups_2_outlined
+                      : Icons.auto_awesome_outlined,
+                  text: raid.isPremiumRaid ? '일반 매칭' : '추천 레이드',
                 ),
+                if (raid.participationFee > 0)
+                  _InfoChip(
+                    icon: Icons.payments_outlined,
+                    text:
+                        '${NumberFormat.decimalPattern('ko').format(raid.participationFee)}원',
+                  ),
               ],
             ),
             if (raid.isMember || raid.isApplied) ...[

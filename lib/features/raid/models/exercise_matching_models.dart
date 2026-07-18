@@ -156,6 +156,32 @@ class ExerciseMatchOffer {
 }
 
 @immutable
+class ExerciseQuickMatchLocation {
+  const ExerciseQuickMatchLocation({
+    required this.userId,
+    required this.latitude,
+    required this.longitude,
+    required this.accuracyMeters,
+    required this.capturedAt,
+  });
+
+  final String userId;
+  final double latitude;
+  final double longitude;
+  final double accuracyMeters;
+  final DateTime capturedAt;
+
+  factory ExerciseQuickMatchLocation.fromMap(Map<String, dynamic> map) =>
+      ExerciseQuickMatchLocation(
+        userId: map['user_id']?.toString() ?? '',
+        latitude: _doubleOrNull(map['latitude']) ?? 0,
+        longitude: _doubleOrNull(map['longitude']) ?? 0,
+        accuracyMeters: _doubleOrNull(map['accuracy_m']) ?? 0,
+        capturedAt: _date(map['captured_at']),
+      );
+}
+
+@immutable
 class RaidRecruitmentCampaign {
   const RaidRecruitmentCampaign({
     required this.id,

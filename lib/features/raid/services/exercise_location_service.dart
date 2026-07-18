@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 
 import '../models/exercise_matching_models.dart';
@@ -22,10 +24,19 @@ class ExerciseLocationService {
     if (permission == LocationPermission.deniedForever) {
       throw const ExerciseLocationException('location_permission_forever');
     }
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 10),
-    );
+    final Position position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } on TimeoutException {
+      throw const ExerciseLocationException('location_timeout');
+    } on LocationServiceDisabledException {
+      throw const ExerciseLocationException('location_service_disabled');
+    } on PermissionDeniedException {
+      throw const ExerciseLocationException('location_permission_denied');
+    }
     if (position.accuracy > 200) {
       throw const ExerciseLocationException('inaccurate_location');
     }
@@ -42,6 +53,7 @@ String exerciseLocationMessage(String reason) => switch (reason) {
   'location_service_disabled' => '휴대폰 위치 서비스를 켜 주세요.',
   'location_permission_denied' => '주변 거리 확인을 위해 위치 권한이 필요해요.',
   'location_permission_forever' => '설정에서 틈틈의 위치 권한을 허용해 주세요.',
+  'location_timeout' => '현재 위치 확인이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.',
   'inaccurate_location' => '현재 위치 정확도가 낮아요. 잠시 후 다시 시도해 주세요.',
   'stale_location' => '위치가 오래되어 다시 확인이 필요해요.',
   'outside_raid_range' => '레이드 장소 5km 안에서만 참가할 수 있어요.',

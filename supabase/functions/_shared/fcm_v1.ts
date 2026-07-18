@@ -123,10 +123,19 @@ function channelForType(pushType: string): string {
     case "request_cancelled":
     case "exercise_match_matched":
     case "raid_recruitment_application":
+    case "raid_application_received":
+    case "raid_application_approved":
+    case "raid_application_waitlisted":
+    case "raid_application_rejected":
+    case "raid_participant_joined":
+    case "raid_participant_cancelled":
       return "ttm_match_result";
     case "chat_message":
+    case "exercise_match_message":
+    case "raid_application_message":
       return "ttm_message";
     case "request_completed":
+    case "raid_started":
       return "ttm_completion";
     default:
       return "ttm_default";

@@ -49,6 +49,26 @@ void main() {
       expect(raid.endsAt.difference(raid.startsAt).inMinutes, 70);
     });
 
+    test('only system-created raids use instant participation', () {
+      Raid raidFor(String source) => Raid.fromMap({
+        'id': 'raid-$source',
+        'source': source,
+        'exercise_type': 'running',
+        'title': 'Morning run',
+        'starts_at': '2030-01-01T09:00:00Z',
+        'participation_fee': 0,
+        'venue': {
+          'id': 'venue-1',
+          'name': 'Park',
+          'latitude': 37.55,
+          'longitude': 127.04,
+        },
+      });
+
+      expect(raidFor('auto').isFree, isTrue);
+      expect(raidFor('premium').isFree, isFalse);
+    });
+
     test('clamps reward level progress between zero and one', () {
       RewardSummary summary(int lifetime) => RewardSummary(
         availablePoints: 100,
@@ -71,6 +91,20 @@ void main() {
       expect(exerciseLabel('running'), '러닝');
       expect(intensityLabel('high'), '높음');
       expect(raidStatusLabel('completed'), '완료');
+    });
+
+    test('parses a place search result for map navigation', () {
+      final place = RaidPlaceSearchResult.fromMap({
+        'name': '두류공원',
+        'roadAddress': '대구광역시 달서구 공원순환로 36',
+        'source': 'local',
+        'lat': 35.8501,
+        'lng': 128.5584,
+      });
+
+      expect(place.label, '두류공원');
+      expect(place.address, '대구광역시 달서구 공원순환로 36');
+      expect(place.hasValidLocation, isTrue);
     });
   });
 }

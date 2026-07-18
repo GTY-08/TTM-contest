@@ -28,12 +28,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   static const _tabs = [
     _TabDef('홈', 'assets/icons/home.svg', Icons.home_outlined),
-    _TabDef(
-      '레이드 만들기',
-      'assets/icons/plus_circle.svg',
-      Icons.add_circle_outline,
-    ),
-    _TabDef('주변 레이드', 'assets/icons/search.svg', Icons.search_outlined),
+    _TabDef('매칭 만들기', 'assets/icons/plus_circle.svg', Icons.add_circle_outline),
+    _TabDef('찾기', 'assets/icons/search.svg', Icons.search_outlined),
     _TabDef('내 활동', 'assets/icons/check_circle.svg', Icons.directions_run),
     _TabDef('리워드', '', Icons.redeem_outlined),
     _TabDef('프로필', 'assets/icons/user.svg', Icons.person_outline),
@@ -76,13 +72,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
               ],
             ),
-      body: AnimatedSwitcher(
-        duration: TtmMotion.standard,
-        switchInCurve: TtmMotion.easeOut,
-        switchOutCurve: TtmMotion.easeIn,
-        child: KeyedSubtree(
-          key: ValueKey<int>(_index),
-          child: _bodyFor(_index),
+      body: SafeArea(
+        top: _index <= 2,
+        bottom: false,
+        child: AnimatedSwitcher(
+          duration: TtmMotion.standard,
+          switchInCurve: TtmMotion.easeOut,
+          switchOutCurve: TtmMotion.easeIn,
+          child: KeyedSubtree(
+            key: ValueKey<int>(_index),
+            child: _bodyFor(_index),
+          ),
         ),
       ),
       bottomNavigationBar: TtmOpsBottomNav(

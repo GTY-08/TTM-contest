@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +28,23 @@ class RaidDetailScreen extends ConsumerStatefulWidget {
 
 class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
   bool _busy = false;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && !_busy) {
+        ref.invalidate(raidDetailProvider(widget.raidId));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +182,17 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
             const SizedBox(height: TtmSpacing.lg),
             _MyStatus(participant: raid.myParticipant!),
           ],
+          if (raid.isApplied && raid.myParticipant != null) ...[
+            const SizedBox(height: TtmSpacing.md),
+            TTMButton(
+              label: '운영자와 1:1 채팅',
+              icon: Icons.chat_bubble_outline_rounded,
+              onPressed: () => context.push(
+                '${AppRoutes.raidRoot}/${raid.id}/applications/'
+                '${raid.myParticipant!.id}/chat',
+              ),
+            ),
+          ],
           if (raid.isMember) ...[
             const SizedBox(height: TtmSpacing.md),
             TTMButton(
@@ -185,6 +215,10 @@ class _RaidDetailScreenState extends ConsumerState<RaidDetailScreen> {
               _ApplicantCard(
                 participant: applicant,
                 busy: _busy,
+                onChat: () => context.push(
+                  '${AppRoutes.raidRoot}/${raid.id}/applications/'
+                  '${applicant.id}/chat',
+                ),
                 onDecision: (decision) => _review(applicant.id, decision),
               ),
               const SizedBox(height: TtmSpacing.sm),
@@ -624,10 +658,12 @@ class _ApplicantCard extends StatelessWidget {
   const _ApplicantCard({
     required this.participant,
     required this.busy,
+    required this.onChat,
     required this.onDecision,
   });
   final RaidParticipant participant;
   final bool busy;
+  final VoidCallback onChat;
   final ValueChanged<String> onDecision;
   @override
   Widget build(BuildContext context) => TtmTierCard(
@@ -641,6 +677,15 @@ class _ApplicantCard extends StatelessWidget {
           Text(participant.applicationMessage!),
         ],
         const SizedBox(height: TtmSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: busy ? null : onChat,
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            label: const Text('지원자와 1:1 채팅'),
+          ),
+        ),
+        const SizedBox(height: TtmSpacing.xs),
         Row(
           children: [
             Expanded(

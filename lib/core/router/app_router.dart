@@ -20,6 +20,7 @@ import '../../features/match/screens/match_waiting_screen.dart';
 import '../../features/match/screens/request_create_screen.dart';
 import '../../features/premium/screens/premium_screen.dart';
 import '../../features/raid/screens/raid_chat_screen.dart';
+import '../../features/raid/screens/raid_application_chat_screen.dart';
 import '../../features/raid/screens/raid_detail_screen.dart';
 import '../../features/raid/screens/exercise_preferences_screen.dart';
 import '../../features/raid/screens/exercise_quick_chat_screen.dart';
@@ -263,6 +264,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           return ttmFadeSlidePage(
             key: state.pageKey,
             child: RaidChatScreen(raidId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.raidRoot}/:id/applications/:participantId/chat',
+        name: 'raidApplicationChat',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final participantId = state.pathParameters['participantId'] ?? '';
+          return ttmFadeSlidePage(
+            key: state.pageKey,
+            child: RaidApplicationChatScreen(
+              raidId: id,
+              participantId: participantId,
+            ),
           );
         },
       ),

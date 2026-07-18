@@ -79,14 +79,6 @@ class SplashScreen extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: TtmSpacing.sm),
-                  Text(
-                    '동네 심부름 매칭',
-                    style: TtmTypography.label.copyWith(
-                      color: TtmColors.deepGreen.withValues(alpha: 0.72),
-                      letterSpacing: 0.2,
-                    ),
-                  ),
                 ],
               ),
             ),

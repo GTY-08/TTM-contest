@@ -135,6 +135,7 @@ class MeetPointMapPickerState extends State<MeetPointMapPicker> {
                 ),
                 onMapReady: (controller) async {
                   _controller = controller;
+                  await _moveCamera(widget.initialCenter);
                 },
                 onCameraIdle: _publishCenter,
               ),

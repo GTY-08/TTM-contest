@@ -71,22 +71,22 @@ abstract final class SettingsCopy {
   static const goNotificationsSubtitle = '홈의 찾기 탭으로 이동';
 
   // ── 작업 탭 ─────────────────────────────────────────────
-  static const workerBannerTitle = '작업 조건';
-  static const workerBannerBody = '활동 중일 때만 주변 요청을 받아요. 거리와 태그는 매칭 알림에 반영돼요.';
+  static const workerBannerTitle = '운동 매칭 조건';
+  static const workerBannerBody = '선호 운동과 이동 거리를 빠른 운동 매칭과 주변 레이드 추천에 반영해요.';
 
   static const workerDistanceTitle = '최대 이동 거리';
-  static const workerDistanceSubtitle = '이 거리 안의 요청만 알려요';
-  static const workerTagsTitle = '선호 태그';
-  static const workerTagsSubtitle = '선택한 종류의 요청을 우선해요';
+  static const workerDistanceSubtitle = '이 거리 안의 운동 매칭을 우선해요';
+  static const workerTagsTitle = '선호 운동';
+  static const workerTagsSubtitle = '선택한 운동의 레이드와 빠른 매칭을 우선해요';
   static const workerLocationBannerTitle = '위치 정보';
   static const workerLocationBannerBody =
-      '활동 ON일 때 대략적인 위치를 사용해요. 매칭 후에는 상대와 위치를 공유할 수 있어요.';
+      '현재 위치는 주변 거리 계산에 사용하고, 매칭 전에는 다른 사용자에게 정확한 위치를 보여주지 않아요.';
   static const workerPenaltyTitle = '이용 제한';
   static const workerPenaltyNone = '현재 제한 없음';
   static String workerPenaltyUntil(String remaining) =>
       '$remaining 후 다시 이용할 수 있어요';
-  static const workerGoHomeTitle = '활동 상태 바꾸기';
-  static const workerGoHomeSubtitle = '홈에서 활동 ON/OFF';
+  static const workerGoHomeTitle = '운동 조건 자세히 설정';
+  static const workerGoHomeSubtitle = '활동 지역·요일·시간대·운동 수준 설정';
 
   // ── 표시 탭 ─────────────────────────────────────────────
   static const displayBannerTitle = '화면 표시';
