@@ -138,6 +138,7 @@ function channelForType(pushType: string): string {
     case "request_completed":
     case "raid_started":
     case "raid_completed":
+    case "exercise_match_completed":
       return "ttm_completion";
     default:
       return "ttm_default";

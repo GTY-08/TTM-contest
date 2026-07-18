@@ -19,6 +19,7 @@ abstract final class PushTypes {
   static const exerciseMatchOffer = 'exercise_match_offer';
   static const exerciseMatchMatched = 'exercise_match_matched';
   static const exerciseMatchMessage = 'exercise_match_message';
+  static const exerciseMatchCompleted = 'exercise_match_completed';
   static const raidRecruitmentOffer = 'raid_recruitment_offer';
   static const raidRecruitmentApplication = 'raid_recruitment_application';
   static const raidApplicationReceived = 'raid_application_received';

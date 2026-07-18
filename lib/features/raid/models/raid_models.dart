@@ -3,6 +3,21 @@ import 'package:flutter/foundation.dart';
 const raidDiscoveryWindow = Duration(hours: 6);
 const raidMinimumLeadTime = Duration(minutes: 10);
 
+final RegExp _coordinatePairPattern = RegExp(
+  r'^\s*(?:(?:위도|lat(?:itude)?)\s*[:=]?\s*)?-?\d{1,3}(?:\.\d+)?\s*[,/|]\s*(?:(?:경도|l(?:o)?ng(?:itude)?)\s*[:=]?\s*)?-?\d{1,3}(?:\.\d+)?\s*$',
+  caseSensitive: false,
+);
+
+bool isCoordinatePlaceText(String? value) {
+  final text = value?.trim() ?? '';
+  return text.isNotEmpty && _coordinatePairPattern.hasMatch(text);
+}
+
+String readablePlaceText(String? value, {required String fallback}) {
+  final text = value?.trim() ?? '';
+  return text.isEmpty || isCoordinatePlaceText(text) ? fallback : text;
+}
+
 @immutable
 class ExerciseVenue {
   const ExerciseVenue({
@@ -31,19 +46,31 @@ class ExerciseVenue {
   final String defaultIntensity;
   final bool beginnerFriendly;
 
-  factory ExerciseVenue.fromMap(Map<String, dynamic> map) => ExerciseVenue(
-    id: map['id']?.toString() ?? '',
-    name: map['name']?.toString() ?? '',
-    address: map['address']?.toString() ?? '',
-    latitude: _asDouble(map['latitude']),
-    longitude: _asDouble(map['longitude']),
-    supportedExercises: _asStringList(map['supported_exercises']),
-    defaultDurationMinutes: _asInt(map['default_duration_minutes'], 60),
-    recommendedMinParticipants: _asInt(map['recommended_min_participants'], 3),
-    maxParticipants: _asInt(map['max_participants'], 12),
-    defaultIntensity: map['default_intensity']?.toString() ?? 'medium',
-    beginnerFriendly: map['beginner_friendly'] != false,
-  );
+  factory ExerciseVenue.fromMap(Map<String, dynamic> map) {
+    final name = readablePlaceText(
+      map['name']?.toString(),
+      fallback: '지도에서 선택한 운동 장소',
+    );
+    return ExerciseVenue(
+      id: map['id']?.toString() ?? '',
+      name: name,
+      address: readablePlaceText(
+        map['address']?.toString(),
+        fallback: '정확한 위치는 지도에서 확인해 주세요.',
+      ),
+      latitude: _asDouble(map['latitude']),
+      longitude: _asDouble(map['longitude']),
+      supportedExercises: _asStringList(map['supported_exercises']),
+      defaultDurationMinutes: _asInt(map['default_duration_minutes'], 60),
+      recommendedMinParticipants: _asInt(
+        map['recommended_min_participants'],
+        3,
+      ),
+      maxParticipants: _asInt(map['max_participants'], 12),
+      defaultIntensity: map['default_intensity']?.toString() ?? 'medium',
+      beginnerFriendly: map['beginner_friendly'] != false,
+    );
+  }
 }
 
 @immutable
@@ -66,9 +93,11 @@ class RaidPlaceSearchResult {
     final name = map['name']?.toString().trim() ?? '';
     final road = map['roadAddress']?.toString().trim() ?? '';
     final jibun = map['jibunAddress']?.toString().trim() ?? '';
+    final rawLabel = name.isNotEmpty ? name : (road.isNotEmpty ? road : jibun);
+    final rawAddress = road.isNotEmpty ? road : jibun;
     return RaidPlaceSearchResult(
-      label: name.isNotEmpty ? name : (road.isNotEmpty ? road : jibun),
-      address: road.isNotEmpty ? road : jibun,
+      label: readablePlaceText(rawLabel, fallback: '검색한 운동 장소'),
+      address: readablePlaceText(rawAddress, fallback: '정확한 위치는 지도에서 확인해 주세요.'),
       source: map['source']?.toString() ?? '',
       latitude: _asDouble(map['lat']),
       longitude: _asDouble(map['lng']),
@@ -494,6 +523,23 @@ class RewardSummary {
           .toList(growable: false),
     );
   }
+}
+
+@immutable
+class ExerciseActivitySummary {
+  const ExerciseActivitySummary({
+    required this.hostedCount,
+    required this.participatedCount,
+  });
+
+  final int hostedCount;
+  final int participatedCount;
+
+  factory ExerciseActivitySummary.fromMap(Map<String, dynamic> map) =>
+      ExerciseActivitySummary(
+        hostedCount: _asInt(map['hosted_count'], 0),
+        participatedCount: _asInt(map['participated_count'], 0),
+      );
 }
 
 int _asInt(Object? value, int fallback) {

@@ -58,8 +58,14 @@ class RaidRepository {
     if (map['ok'] != true) {
       throw StateError(map['reason']?.toString() ?? 'reverse_lookup_failed');
     }
-    final label = map['label']?.toString().trim() ?? '';
-    final address = map['address']?.toString().trim() ?? '';
+    final label = readablePlaceText(
+      map['label']?.toString(),
+      fallback: '지도에서 선택한 운동 장소',
+    );
+    final address = readablePlaceText(
+      map['address']?.toString(),
+      fallback: '정확한 위치는 지도에서 확인해 주세요.',
+    );
     if (label.isEmpty && address.isEmpty) {
       throw StateError('location_not_found');
     }
@@ -98,6 +104,12 @@ class RaidRepository {
   Future<List<Raid>> fetchMyRaids() async {
     final raw = await _supabase.rpc('list_my_raids');
     return _mapList(raw, Raid.fromMap);
+  }
+
+  Future<ExerciseActivitySummary> fetchExerciseActivitySummary() async {
+    final raw = await _supabase.rpc('get_my_exercise_activity_summary');
+    if (raw is! Map) throw StateError('activity_summary_unavailable');
+    return ExerciseActivitySummary.fromMap(Map<String, dynamic>.from(raw));
   }
 
   Future<RaidDetail> fetchDetail(String raidId) async {
@@ -302,8 +314,13 @@ class RaidRepository {
   Future<Map<String, dynamic>> cancelQuickMatch(String quickMatchId) =>
       _rpc('cancel_exercise_quick_match', {'p_quick_match_id': quickMatchId});
 
-  Future<Map<String, dynamic>> completeQuickMatch(String quickMatchId) =>
-      _rpc('complete_exercise_quick_match', {'p_quick_match_id': quickMatchId});
+  Future<Map<String, dynamic>> completeQuickMatch(String quickMatchId) async {
+    final result = await _rpc('complete_exercise_quick_match', {
+      'p_quick_match_id': quickMatchId,
+    });
+    if (result['ok'] == true) await flushPushOutbox(_supabase);
+    return result;
+  }
 
   Stream<({List<ChatMessage> messages, ChatReadState reads})>
   watchQuickMessages(String quickMatchId) {

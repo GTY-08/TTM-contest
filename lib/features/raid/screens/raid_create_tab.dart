@@ -354,10 +354,14 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
   }
 
   String get _selectedLocationText {
-    final label = _locationLabel;
-    if (label != null && label.isNotEmpty) {
-      final address = _locationAddress;
-      return address == null || address.isEmpty ? label : '$label\n$address';
+    final rawLabel = _locationLabel?.trim() ?? '';
+    if (rawLabel.isNotEmpty) {
+      final label = readablePlaceText(rawLabel, fallback: '지도에서 선택한 운동 장소');
+      final address = readablePlaceText(
+        _locationAddress,
+        fallback: '정확한 위치는 지도에서 확인해 주세요.',
+      );
+      return '$label\n$address';
     }
     if (_locationResolving) return '선택한 위치의 주변 장소를 확인하고 있어요.';
     if (_locationLatitude != null && _locationLongitude != null) {
@@ -630,10 +634,14 @@ class _RaidCreateTabState extends ConsumerState<RaidCreateTab> {
       final result = await ref
           .read(raidRepositoryProvider)
           .createPremiumRaid(
-            locationName: _locationLabel ?? '선택한 운동 장소',
-            locationAddress: (_locationAddress?.trim().isNotEmpty ?? false)
-                ? _locationAddress!.trim()
-                : '정확한 집합 위치는 지도 핀을 확인해 주세요.',
+            locationName: readablePlaceText(
+              _locationLabel,
+              fallback: '지도에서 선택한 운동 장소',
+            ),
+            locationAddress: readablePlaceText(
+              _locationAddress,
+              fallback: '정확한 집합 위치는 지도 핀을 확인해 주세요.',
+            ),
             latitude: _locationLatitude!,
             longitude: _locationLongitude!,
             exerciseType: _exerciseType!,

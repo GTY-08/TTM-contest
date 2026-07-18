@@ -113,6 +113,13 @@ final myRaidsProvider = FutureProvider<List<Raid>>((ref) {
   return ref.watch(raidRepositoryProvider).fetchMyRaids();
 });
 
+final exerciseActivitySummaryProvider = FutureProvider<ExerciseActivitySummary>(
+  (ref) {
+    ref.watch(authUserIdProvider);
+    return ref.watch(raidRepositoryProvider).fetchExerciseActivitySummary();
+  },
+);
+
 final raidDetailProvider = FutureProvider.autoDispose
     .family<RaidDetail, String>(
       (ref, raidId) => ref.watch(raidRepositoryProvider).fetchDetail(raidId),
@@ -216,6 +223,7 @@ void invalidateRaidData(Ref ref) {
   ref.invalidate(nearbyRaidsProvider);
   ref.invalidate(myRaidsProvider);
   ref.invalidate(myQuickMatchProvider);
+  ref.invalidate(exerciseActivitySummaryProvider);
   ref.invalidate(exerciseMatchOffersProvider);
   ref.invalidate(raidRecruitmentOffersProvider);
   ref.invalidate(rewardSummaryProvider);

@@ -225,6 +225,7 @@ class FcmPushService {
       case PushTypes.requestCompleted:
       case PushTypes.raidStarted:
       case PushTypes.raidCompleted:
+      case PushTypes.exerciseMatchCompleted:
         return PushChannels.completion;
       default:
         return PushChannels.defaultChannel;

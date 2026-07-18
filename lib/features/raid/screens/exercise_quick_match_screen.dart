@@ -390,8 +390,49 @@ class _ExerciseQuickMatchScreenState
   Future<void> _cancel(String id) =>
       _run(() => ref.read(raidRepositoryProvider).cancelQuickMatch(id));
 
-  Future<void> _complete(String id) =>
-      _run(() => ref.read(raidRepositoryProvider).completeQuickMatch(id));
+  Future<void> _complete(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('1대1 운동을 완료할까요?'),
+        content: const Text('완료하면 두 참여자 모두 활동 포인트 100P를 받아요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니요'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('완료하기'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || _busy || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final result = await ref
+          .read(raidRepositoryProvider)
+          .completeQuickMatch(id);
+      if (!mounted) return;
+      if (result['ok'] == true) {
+        ref.invalidate(rewardSummaryProvider);
+        ref.invalidate(exerciseActivitySummaryProvider);
+        _show(
+          result['already_completed'] == true
+              ? '이미 완료된 운동이에요.'
+              : '운동 완료! 두 사람 모두 100P를 받았어요.',
+        );
+      } else {
+        _show(exerciseLocationMessage(result['reason']?.toString() ?? ''));
+      }
+      await _refresh();
+    } catch (_) {
+      if (mounted) _show('완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _tick() async {
     if (!mounted || _busy || _polling) return;

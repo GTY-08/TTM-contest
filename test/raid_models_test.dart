@@ -107,6 +107,31 @@ void main() {
       expect(place.hasValidLocation, isTrue);
     });
 
+    test('never exposes a coordinate pair as an exercise place label', () {
+      final venue = ExerciseVenue.fromMap({
+        'id': 'venue-coordinate',
+        'name': '35.8582, 128.6305',
+        'address': '위도 35.8582 / 경도 128.6305',
+        'latitude': 35.8582,
+        'longitude': 128.6305,
+      });
+
+      expect(venue.name, '지도에서 선택한 운동 장소');
+      expect(venue.address, '정확한 위치는 지도에서 확인해 주세요.');
+      expect(isCoordinatePlaceText('35.8582, 128.6305'), isTrue);
+      expect(isCoordinatePlaceText('대구광역시 수성구 청수로 257'), isFalse);
+    });
+
+    test('parses exercise-only profile activity counts', () {
+      final summary = ExerciseActivitySummary.fromMap({
+        'hosted_count': 2,
+        'participated_count': 5,
+      });
+
+      expect(summary.hostedCount, 2);
+      expect(summary.participatedCount, 5);
+    });
+
     test('parses a fresh raid participant location', () {
       final capturedAt = DateTime.now().subtract(const Duration(seconds: 20));
       final location = RaidLiveLocation.fromMap({

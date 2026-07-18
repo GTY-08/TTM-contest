@@ -11,7 +11,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/models/received_review.dart';
 import '../../../data/providers/auth_providers.dart';
-import '../../../features/match/providers/match_providers.dart';
+import '../../../features/raid/providers/raid_providers.dart';
 import '../../../shared/widgets/ttm_button.dart';
 import '../../../shared/widgets/ttm_elevated_card.dart';
 import '../../../shared/widgets/ttm_empty_state.dart';
@@ -30,7 +30,7 @@ class ProfileTabBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
     final profileAsync = ref.watch(myProfileProvider);
-    final completedAsync = ref.watch(myCompletedRequestsStreamProvider);
+    final activityAsync = ref.watch(exerciseActivitySummaryProvider);
     final receivedReviewsAsync = ref.watch(myReceivedReviewsProvider);
 
     return ColoredBox(
@@ -94,12 +94,9 @@ class ProfileTabBody extends ConsumerWidget {
                 // ── 활동 기록 ────────────────────────────────────
                 const TtmSectionHeader(title: '활동 기록'),
                 _ActivitySummaryCard(
-                  requestedCount: completedAsync.valueOrNull
-                      ?.where((item) => item.requesterId == user.id)
-                      .length,
-                  workCount: completedAsync.valueOrNull
-                      ?.where((item) => item.workerId == user.id)
-                      .length,
+                  hostedCount: activityAsync.valueOrNull?.hostedCount,
+                  participatedCount:
+                      activityAsync.valueOrNull?.participatedCount,
                   receivedReviewCount:
                       receivedReviewsAsync.valueOrNull?.length ??
                       user.ratingCount,
@@ -321,7 +318,7 @@ class _TrustCard extends StatelessWidget {
       padding: const EdgeInsets.all(TtmSpacing.lg),
       child: _TrustRow(
         icon: Icons.block_outlined,
-        label: '거래 제한',
+        label: '활동 제한',
         status: hasPenalty ? '제한 있음' : '제한 없음',
         statusColor: hasPenalty ? colors.error : TtmColors.deepGreen,
       ),
@@ -383,13 +380,13 @@ class _TrustRow extends StatelessWidget {
 
 class _ActivitySummaryCard extends StatelessWidget {
   const _ActivitySummaryCard({
-    required this.requestedCount,
-    required this.workCount,
+    required this.hostedCount,
+    required this.participatedCount,
     required this.receivedReviewCount,
   });
 
-  final int? requestedCount;
-  final int? workCount;
+  final int? hostedCount;
+  final int? participatedCount;
   final int receivedReviewCount;
 
   @override
@@ -403,13 +400,13 @@ class _ActivitySummaryCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _StatItem(
-            value: requestedCount == null ? '...' : '$requestedCount건',
-            label: '맡긴 심부름',
+            value: hostedCount == null ? '...' : '$hostedCount건',
+            label: '운영한 매칭',
           ),
           _VertDivider(),
           _StatItem(
-            value: workCount == null ? '...' : '$workCount건',
-            label: '도운 심부름',
+            value: participatedCount == null ? '...' : '$participatedCount건',
+            label: '참여한 운동',
           ),
           _VertDivider(),
           _StatItem(value: '$receivedReviewCount개', label: '받은 후기'),
@@ -443,7 +440,7 @@ class _ReceivedReviewsSection extends StatelessWidget {
           return const TtmEmptyState(
             iconAsset: 'assets/icons/check_circle.svg',
             title: '아직 후기가 없어요',
-            subtitle: '완료한 거래 후 상대방이 남긴 후기가 여기에 쌓여요',
+            subtitle: '함께 운동한 사용자가 남긴 후기가 여기에 쌓여요',
           );
         }
         return Column(
