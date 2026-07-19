@@ -120,7 +120,7 @@ class _ActivityTabBodyState extends ConsumerState<ActivityTabBody>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const TtmSectionHeader(title: '진행 중인 심부름'),
+                const TtmSectionHeader(title: '진행 중인 ○○'),
                 LiveMissionCard.active(
                   request: list.first,
                   currentUserId: uid,
@@ -240,8 +240,8 @@ class _ActivityTabBodyState extends ConsumerState<ActivityTabBody>
               fontWeight: FontWeight.w500,
             ),
             tabs: const [
-              Tab(text: '도운 심부름'),
-              Tab(text: '맡긴 심부름'),
+              Tab(text: '도운 ○○'),
+              Tab(text: '맡긴 ○○'),
             ],
           ),
         ),
@@ -514,7 +514,7 @@ class _ActivityWaitingCardState extends State<_ActivityWaitingCard>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '진행 중인 심부름은 없어요',
+                    '진행 중인 ○○은 없어요',
                     style: TtmTypography.title.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

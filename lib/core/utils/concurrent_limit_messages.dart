@@ -4,8 +4,8 @@ import 'package:postgrest/postgrest.dart';
 String concurrentSlotLimitMessage({required bool isPremium}) {
   final limit = isPremium ? 3 : 1;
   return isPremium
-      ? '진행·대기 중인 심부름이 이미 $limit건이에요. (요청+작업 합산) 하나 끝낸 뒤 다시 시도해 주세요.'
-      : '진행·대기 중인 심부름이 이미 $limit건이에요. 프리미엄은 요청·작업 합쳐 최대 3건까지 가능해요.';
+      ? '진행·대기 중인 ○○이 이미 $limit건이에요. (요청+작업 합산) 하나 끝낸 뒤 다시 시도해 주세요.'
+      : '진행·대기 중인 ○○이 이미 $limit건이에요. 프리미엄은 요청·작업 합쳐 최대 3건까지 가능해요.';
 }
 
 String concurrentLimitUserMessage(Object error, {required bool isPremium}) {

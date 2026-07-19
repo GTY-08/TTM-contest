@@ -154,7 +154,7 @@ private fun BrowseContent(errands: List<NearbyErrand>, count: Int) {
                 }
                 Spacer(modifier = GlanceModifier.width(7.dp))
                 Text(
-                    text = "주변 심부름",
+                    text = "주변 ○○",
                     modifier = GlanceModifier.defaultWeight(),
                     style = TextStyle(
                         color = ColorProvider(BDarkText),
@@ -281,7 +281,7 @@ private fun EmptyState() {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "탭해서 주변 심부름 보기",
+            text = "탭해서 주변 ○○ 보기",
             style = TextStyle(
                 color = ColorProvider(BSubText),
                 fontSize = 13.sp,

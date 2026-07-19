@@ -228,7 +228,7 @@ private fun WorkRow(context: Context, item: WorkItem) {
         Spacer(modifier = GlanceModifier.width(9.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
-                text = item.title.ifBlank { "심부름" },
+                text = item.title.ifBlank { "○○" },
                 style = TextStyle(
                     color = ColorProvider(WDarkText),
                     fontSize = 14.sp,

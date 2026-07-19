@@ -52,7 +52,7 @@ class RequestTabBody extends ConsumerWidget {
                 children: [
                   SizedBox(height: top > 0 ? 0 : TtmSpacing.sm),
                   Text(
-                    '심부름 맡기기',
+                    '○○ 맡기기',
                     style: TtmTypography.display.copyWith(
                       fontSize: compact ? 28 : 32,
                       fontWeight: FontWeight.w900,
@@ -106,7 +106,7 @@ class RequestTabBody extends ConsumerWidget {
                         ? () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('현재 심부름 요청 기능이 제한되어 있습니다.'),
+                                content: Text('현재 ○○ 요청 기능이 제한되어 있습니다.'),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );

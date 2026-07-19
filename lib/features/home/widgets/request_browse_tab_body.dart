@@ -132,7 +132,7 @@ class _RequestBrowseTabBodyState extends ConsumerState<RequestBrowseTabBody> {
               content: Text(
                 alreadyApplied
                     ? '이미 지원한 작업이에요. 기존 채팅으로 이동합니다.'
-                    : '지원했어요. 채팅에서 조건과 심부름비를 협의해 주세요.',
+                    : '지원했어요. 채팅에서 조건과 ○○비를 협의해 주세요.',
               ),
               behavior: SnackBarBehavior.floating,
             ),
@@ -1123,7 +1123,7 @@ class _BrowseEmptySuggestionsState extends State<_BrowseEmptySuggestions>
             ),
             const SizedBox(height: TtmSpacing.lg),
             Text(
-              '조건에 맞는 심부름이 없어요',
+              '조건에 맞는 ○○이 없어요',
               textAlign: TextAlign.center,
               style: TtmTypography.title.copyWith(
                 fontSize: 17,
@@ -1241,7 +1241,7 @@ class _LocationEmpty extends StatelessWidget {
         ),
         const SizedBox(height: TtmSpacing.sm),
         Text(
-          '주변 심부름을 찾으려면\n현재 위치를 허용해 주세요.',
+          '주변 ○○을 찾으려면\n현재 위치를 허용해 주세요.',
           textAlign: TextAlign.center,
           style: TtmTypography.body.copyWith(color: colors.onSurfaceVariant),
         ),

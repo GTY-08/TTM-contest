@@ -102,8 +102,8 @@ class FcmPushService {
       await android?.createNotificationChannel(
         const AndroidNotificationChannel(
           PushChannels.matchOffer,
-          '근처 심부름',
-          description: '활동 중일 때 주변 심부름 제안',
+          '근처 ○○',
+          description: '활동 중일 때 주변 ○○ 제안',
           importance: Importance.high,
         ),
       );
@@ -119,7 +119,7 @@ class FcmPushService {
         const AndroidNotificationChannel(
           PushChannels.message,
           '메시지',
-          description: '진행 중 심부름 대화',
+          description: '진행 중 ○○ 대화',
           importance: Importance.defaultImportance,
         ),
       );
@@ -235,7 +235,7 @@ class FcmPushService {
   String _channelLabel(String channelId) {
     switch (channelId) {
       case PushChannels.matchOffer:
-        return '근처 심부름';
+        return '근처 ○○';
       case PushChannels.matchResult:
         return '매칭 결과';
       case PushChannels.message:

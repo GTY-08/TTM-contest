@@ -51,7 +51,7 @@ abstract final class SettingsCopy {
   // ── 알림 탭 ─────────────────────────────────────────────
   static const notifyBannerTitle = '알림';
   static const notifyBannerBody =
-      '주변 심부름 요청과 매칭 소식을 받는 방법을 골라요. 기기에서 알림을 허용해야 푸시가 와요.';
+      '주변 ○○ 요청과 매칭 소식을 받는 방법을 골라요. 기기에서 알림을 허용해야 푸시가 와요.';
 
   static const notifyModePushTitle = '푸시만';
   static const notifyModePushSubtitle = '잠금 화면에만 알려요';
@@ -67,7 +67,7 @@ abstract final class SettingsCopy {
   static const marketingTitle = '마케팅 알림';
   static const marketingSubtitle = '이벤트·혜택 소식 (선택)';
   static const marketingFootnote = '언제든 끌 수 있어요';
-  static const goNotificationsTitle = '주변 심부름 찾기';
+  static const goNotificationsTitle = '주변 ○○ 찾기';
   static const goNotificationsSubtitle = '홈의 찾기 탭으로 이동';
 
   // ── 작업 탭 ─────────────────────────────────────────────
@@ -117,10 +117,8 @@ abstract final class SettingsCopy {
   static const permissionsOpenSubtitle = '앱 권한을 변경할 수 있어요';
   static const contactTitle = '고객센터';
   static const contactSubtitle = '자주 묻는 질문 · 문의 접수';
-  static const onboardingPreview = '온보딩 미리보기 (개발)';
   static const developerSectionTitle = '개발자';
   static const developerModeTitle = '개발자 모드';
   static const developerModeOnSubtitle = '숨겨진 개발 탭과 진단 정보를 표시해요.';
   static const developerModeOffSubtitle = '진단 정보가 필요할 때만 켜세요.';
-  static const onboardingPreviewSubtitle = '온보딩 흐름을 다시 확인해요.';
 }

@@ -23,7 +23,7 @@ class WorkerActivityLocationService {
         distanceFilter: 25,
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: '틈틈 활동 중',
-          notificationText: '주변 심부름 알림을 위해 위치를 사용해요',
+          notificationText: '주변 ○○ 알림을 위해 위치를 사용해요',
           notificationChannelName: '활동 중',
           notificationIcon: AndroidResource(name: 'ic_stat_ttm'),
           color: Color(0xFF0B7A75),

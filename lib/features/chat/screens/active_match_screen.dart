@@ -596,7 +596,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
     return switch (reason) {
       'proof_not_found' => '인증 사진을 찾지 못했어요. 화면을 새로고침해 주세요.',
       'not_requester' => '요청자만 인증 사진을 검토할 수 있어요.',
-      'not_matched' => '진행 중인 심부름에서만 인증 사진을 검토할 수 있어요.',
+      'not_matched' => '진행 중인 ○○에서만 인증 사진을 검토할 수 있어요.',
       'already_reviewed' => '이미 처리된 인증 사진이에요.',
       'review_failed' => '반려 처리 중 서버 오류가 났어요. 잠시 후 다시 시도해 주세요.',
       _ => '인증 사진을 처리하지 못했어요.',
@@ -795,7 +795,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
 
   void _leaveActiveScreen(MatchRequest req) {
     if (req.isMatched && !req.isCompleted) {
-      _snack('심부름은 계속 진행 중이에요. 홈에서 다시 들어올 수 있어요.');
+      _snack('○○은 계속 진행 중이에요. 홈에서 다시 들어올 수 있어요.');
     }
     context.go(AppRoutes.home);
   }
@@ -842,7 +842,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
       case 'not_requester':
         return '요청자만 위치 공유를 바꿀 수 있어요.';
       case 'not_matched':
-        return '매칭된 심부름에서만 위치를 공유할 수 있어요.';
+        return '매칭된 ○○에서만 위치를 공유할 수 있어요.';
       case 'request_not_found':
         return '요청을 찾을 수 없어요.';
       default:
@@ -856,7 +856,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('완료를 요청할까요?'),
-        content: const Text('요청자가 확인하면 심부름이 종료되고 정산이 진행돼요.\n지금은 아직 진행 중이에요.'),
+        content: const Text('요청자가 확인하면 ○○이 종료되고 정산이 진행돼요.\n지금은 아직 진행 중이에요.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -909,7 +909,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
       builder: (context) => AlertDialog(
         title: const Text('작업 완료를 확인할까요?'),
         content: const Text(
-          '확인하면 심부름이 종료되고 정산이 진행돼요.\n대화 입력이 잠기고 후기를 남길 수 있어요.',
+          '확인하면 ○○이 종료되고 정산이 진행돼요.\n대화 입력이 잠기고 후기를 남길 수 있어요.',
         ),
         actions: [
           TextButton(
@@ -934,7 +934,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
       if (res['ok'] == true) {
         await _refreshRequestState();
         if (!mounted) return;
-        _snack('심부름이 종료됐어요. 정산이 진행돼요.');
+        _snack('○○이 종료됐어요. 정산이 진행돼요.');
       } else {
         _snack(_completionFailureKo(res['reason']?.toString() ?? 'unknown'));
       }
@@ -1008,7 +1008,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('심부름을 취소할까요?'),
+        title: const Text('○○을 취소할까요?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1071,7 +1071,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
         return '요청을 찾을 수 없어요.';
       case 'not_participant':
       case 'not_owner':
-        return '이 심부름을 취소할 권한이 없어요.';
+        return '이 ○○을 취소할 권한이 없어요.';
       case 'invalid_state':
         return '이미 종료되었거나 취소할 수 없는 상태예요.';
       default:
@@ -1332,7 +1332,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  merged.isCompleted ? '종료된 심부름' : '진행 중',
+                  merged.isCompleted ? '종료된 ○○' : '진행 중',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1343,7 +1343,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
                     const SizedBox(width: TtmSpacing.sm),
                     Expanded(
                       child: Text(
-                        isRequester ? '내가 요청한 심부름' : '내가 수행 중',
+                        isRequester ? '내가 요청한 ○○' : '내가 수행 중',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TtmTypography.label.copyWith(
@@ -1545,7 +1545,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
                           ],
                           const SizedBox(height: TtmSpacing.sm),
                           TTMButton(
-                            label: '심부름 취소',
+                            label: '○○ 취소',
                             variant: TtmButtonVariant.ghost,
                             pill: true,
                             busy: _cancelling,
@@ -1584,7 +1584,7 @@ class _ActiveMatchScreenState extends ConsumerState<ActiveMatchScreen> {
                         vertical: TtmSpacing.sm,
                       ),
                       child: Text(
-                        '이 심부름은 종료됐어요. 대화는 읽기만 가능해요.',
+                        '이 ○○은 종료됐어요. 대화는 읽기만 가능해요.',
                         style: TtmTypography.body.copyWith(
                           fontSize: 14,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,

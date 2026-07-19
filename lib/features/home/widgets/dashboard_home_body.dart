@@ -258,7 +258,7 @@ class _DashboardHomeBodyState extends ConsumerState<DashboardHomeBody> {
             child: Row(
               children: [
                 Text(
-                  '주변 심부름',
+                  '주변 ○○',
                   style: TtmTypography.title.copyWith(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -282,7 +282,7 @@ class _DashboardHomeBodyState extends ConsumerState<DashboardHomeBody> {
           if (!isOnline)
             const _NeighborhoodSignalCard(
               title: '주변 요청을 받을 준비를 해둘까요?',
-              subtitle: '활동을 켜면 근처에 새 심부름이 올라올 때 바로 확인할 수 있어요.',
+              subtitle: '활동을 켜면 근처에 새 ○○이 올라올 때 바로 확인할 수 있어요.',
               statusLabel: '활동 OFF',
               icon: Icons.location_off_outlined,
               active: false,
@@ -912,7 +912,7 @@ class _RequestCta extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '심부름 맡기기',
+                    '○○ 맡기기',
                     style: TtmTypography.title.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,

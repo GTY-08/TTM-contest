@@ -271,7 +271,7 @@ class _GeneralApplicationChatScreenState
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('심부름비 제시'),
+        title: const Text('○○비 제시'),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -300,7 +300,7 @@ class _GeneralApplicationChatScreenState
     });
     if (ok != true || !mounted) return;
     if (value == null || value < 1000) {
-      _snack('심부름비는 1,000원 이상으로 입력해 주세요.');
+      _snack('○○비는 1,000원 이상으로 입력해 주세요.');
       return;
     }
 
@@ -314,7 +314,7 @@ class _GeneralApplicationChatScreenState
           );
       if (!mounted) return;
       if (res['ok'] == true) {
-        _snack('새 심부름비를 제시했어요. 상대방 동의가 필요합니다.');
+        _snack('새 ○○비를 제시했어요. 상대방 동의가 필요합니다.');
       } else {
         _snack(_rewardActionFailureKo(res['reason']?.toString()));
       }
@@ -410,12 +410,12 @@ class _GeneralApplicationChatScreenState
 
   String _rewardActionFailureKo(String? reason) {
     return switch (reason) {
-      'invalid_reward' => '심부름비는 1,000원 이상이어야 해요.',
+      'invalid_reward' => '○○비는 1,000원 이상이어야 해요.',
       'application_not_found' => '지원을 찾을 수 없어요.',
       'request_not_found' => '요청을 찾을 수 없어요.',
       'not_participant' => '이 협의에 참여한 사용자만 할 수 있어요.',
       'not_negotiable' => '이미 마감되었거나 협의할 수 없는 상태예요.',
-      'no_proposed_reward' => '먼저 심부름비를 제시해 주세요.',
+      'no_proposed_reward' => '먼저 ○○비를 제시해 주세요.',
       _ => '처리하지 못했어요 (${reason ?? 'unknown'}).',
     };
   }
@@ -1002,7 +1002,7 @@ class _RewardAgreementPanel extends StatelessWidget {
     final proposedBy = agreement?.proposedBy?.toString();
     final mineProposed = myUserId != null && proposedBy == myUserId;
     final rewardLabel = reward == null
-        ? '아직 제시된 최종 심부름비가 없어요'
+        ? '아직 제시된 최종 ○○비가 없어요'
         : '${NumberFormat.decimalPattern('ko').format(reward)}원';
     final status = ready
         ? '양측 동의 완료'

@@ -28,7 +28,7 @@ class HomeGreetingStrip extends StatelessWidget {
 
     String subtitle;
     if (!isOnline) {
-      subtitle = '활동을 켜면 주변 심부름을 받을 수 있어요';
+      subtitle = '활동을 켜면 주변 ○○을 받을 수 있어요';
     } else if (nearbyCount == null) {
       subtitle = '주변 요청을 확인하는 중…';
     } else if (nearbyCount! > 0) {

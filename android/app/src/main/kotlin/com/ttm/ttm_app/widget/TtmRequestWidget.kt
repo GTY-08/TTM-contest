@@ -122,7 +122,7 @@ private fun SmallContent() {
             Spacer(modifier = GlanceModifier.defaultWeight())
 
             Text(
-                text = "심부름\n맡기기",
+                text = "○○\n맡기기",
                 style = TextStyle(
                     color = ColorProvider(White),
                     fontSize = 24.sp,
@@ -178,7 +178,7 @@ private fun MediumContent() {
                 }
                 Spacer(modifier = GlanceModifier.width(8.dp))
                 Text(
-                    text = "심부름 맡기기",
+                    text = "○○ 맡기기",
                     modifier = GlanceModifier.defaultWeight(),
                     style = TextStyle(
                         color = ColorProvider(DarkText),

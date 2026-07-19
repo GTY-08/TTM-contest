@@ -574,7 +574,7 @@ class _MatchChatScreenState extends ConsumerState<MatchChatScreen> {
                         0,
                       ),
                       child: Text(
-                        '종료된 심부름이에요. 대화는 읽기만 가능해요.',
+                        '종료된 ○○이에요. 대화는 읽기만 가능해요.',
                         textAlign: TextAlign.center,
                         style: TtmTypography.body.copyWith(
                           fontSize: 13,

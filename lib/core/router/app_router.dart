@@ -8,7 +8,6 @@ import '../../features/auth/screens/email_login_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/email_sign_up_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
-import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/home/screens/home_screen.dart';
@@ -32,7 +31,6 @@ class AppRoutes {
   const AppRoutes._();
 
   static const String splash = '/splash';
-  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String emailLogin = '/login/email';
   static const String emailSignUp = '/signup/email';
@@ -101,22 +99,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      final onboardingSeen = ref.read(onboardingSeenProvider);
-
-      if (loc == AppRoutes.onboarding) {
-        if (onboardingSeen) {
-          final uidEarly = ref.read(authUserIdProvider);
-          return uidEarly == null ? AppRoutes.login : AppRoutes.splash;
-        }
-        return null;
-      }
-
-      if (!onboardingSeen &&
-          loc != AppRoutes.dev &&
-          loc != AppRoutes.resetPassword) {
-        return AppRoutes.onboarding;
-      }
-
       final uid = ref.read(authUserIdProvider);
       final profileAsync = ref.read(myProfileProvider);
 
@@ -126,16 +108,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             loc == AppRoutes.login ||
             loc == AppRoutes.emailLogin ||
             loc == AppRoutes.emailSignUp ||
-            loc == AppRoutes.resetPassword ||
-            loc == AppRoutes.onboarding;
+            loc == AppRoutes.resetPassword;
         return atLoginArea ? null : AppRoutes.login;
       }
 
       // 2) 프로필 로딩 중 → 스플래시에서 대기. (이미 /signup 이면 깜빡임 줄이려 그대로 둠)
       if (profileAsync.isLoading) {
         if (loc == AppRoutes.splash ||
-            loc == AppRoutes.signup ||
-            loc == AppRoutes.onboarding) {
+            loc == AppRoutes.signup) {
           return null;
         }
         return AppRoutes.splash;
@@ -185,14 +165,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'splash',
         pageBuilder: (context, state) =>
             ttmFadeSlidePage(key: state.pageKey, child: const SplashScreen()),
-      ),
-      GoRoute(
-        path: AppRoutes.onboarding,
-        name: 'onboarding',
-        pageBuilder: (context, state) => ttmFadeSlidePage(
-          key: state.pageKey,
-          child: const OnboardingScreen(),
-        ),
       ),
       GoRoute(
         path: AppRoutes.login,

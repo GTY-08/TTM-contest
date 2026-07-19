@@ -163,7 +163,7 @@ class _UserRestrictionNoticeState extends ConsumerState<UserRestrictionNotice> {
   String _title(UserRestriction restriction) {
     return switch (restriction.type) {
       'suspended' => '계정 이용 정지 적용 중',
-      'request_block' => '심부름 요청 기능 제한 중',
+      'request_block' => '○○ 요청 기능 제한 중',
       'worker_block' => '작업 수락 기능 제한 중',
       'matching_block' => '신규 매칭 활동 제한 중',
       'chat_block' => '채팅 기능 제한 중',

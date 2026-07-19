@@ -141,7 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: TtmSpacing.xl),
                     Text(
-                      '틈틈 계정으로\n주변 심부름을 시작하세요',
+                      '틈틈 계정으로\n시작하세요',
                       textAlign: TextAlign.center,
                       style: TtmTypography.display.copyWith(
                         fontSize: 24,

@@ -187,29 +187,6 @@ final myReceivedReviewsProvider = FutureProvider<List<ReceivedReview>>((
   return ref.read(userRepositoryProvider).fetchMyReceivedReviews();
 });
 
-/// 온보딩 슬라이드를 본 적이 있는가. SharedPreferences 영구 저장.
-class OnboardingSeenNotifier extends Notifier<bool> {
-  @override
-  bool build() {
-    return ref.read(prefsProvider).onboardingSeen;
-  }
-
-  Future<void> markSeen() async {
-    await ref.read(prefsProvider).setOnboardingSeen(true);
-    state = true;
-  }
-
-  /// 개발·검증용: 온보딩을 다시 보려면 플래그를 내리고 라우터가 재평가되게 한다.
-  Future<void> resetOnboardingForPreview() async {
-    await ref.read(prefsProvider).setOnboardingSeen(false);
-    state = false;
-  }
-}
-
-final onboardingSeenProvider = NotifierProvider<OnboardingSeenNotifier, bool>(
-  OnboardingSeenNotifier.new,
-);
-
 class DeveloperModeNotifier extends Notifier<bool> {
   @override
   bool build() {
@@ -229,13 +206,12 @@ final developerModeProvider = NotifierProvider<DeveloperModeNotifier, bool>(
 /// 라우터 redirect 가 듣는 통합 [Listenable].
 ///
 /// `go_router` 의 `refreshListenable` 은 [Listenable] 을 요구한다.
-/// 인증·프로필·온보딩 상태 중 어느 하나라도 바뀌면 값을 한 칸 올려
+/// 인증·프로필 상태 중 어느 하나라도 바뀌면 값을 한 칸 올려
 /// 라우터에 "다시 redirect 평가하라" 고 알린다.
 final authRouterRefreshProvider = Provider<Listenable>((ref) {
   final notifier = ValueNotifier<int>(0);
   ref.listen(authUserIdProvider, (_, _) => notifier.value++);
   ref.listen(myProfileProvider, (_, _) => notifier.value++);
-  ref.listen(onboardingSeenProvider, (_, _) => notifier.value++);
   ref.onDispose(notifier.dispose);
   return notifier;
 });

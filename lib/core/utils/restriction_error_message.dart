@@ -7,7 +7,7 @@ String restrictionErrorMessage(Object? error) {
     return '유해 표현 검사에 실패했어요. 잠시 후 다시 시도해 주세요.';
   }
   if (text.contains('request_restricted')) {
-    return '현재 심부름 요청 기능이 제한되어 있습니다.';
+    return '현재 ○○ 요청 기능이 제한되어 있습니다.';
   }
   if (text.contains('worker_restricted')) {
     return '현재 작업 수락 기능이 제한되어 있습니다.';

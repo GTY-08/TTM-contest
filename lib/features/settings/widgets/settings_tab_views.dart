@@ -884,17 +884,6 @@ class SettingsAppTab extends ConsumerWidget {
               onChanged: (value) =>
                   ref.read(developerModeProvider.notifier).setEnabled(value),
             ),
-            if (developerMode || kDebugMode)
-              TtmSettingsTile(
-                title: SettingsCopy.onboardingPreview,
-                subtitle: SettingsCopy.onboardingPreviewSubtitle,
-                onTap: () async {
-                  await ref
-                      .read(onboardingSeenProvider.notifier)
-                      .resetOnboardingForPreview();
-                  if (context.mounted) context.go(AppRoutes.onboarding);
-                },
-              ),
           ],
         ),
       ],

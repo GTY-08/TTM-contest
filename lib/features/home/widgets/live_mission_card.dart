@@ -96,7 +96,7 @@ class _LiveMissionCardState extends State<LiveMissionCard> {
 
     if (isActive) {
       final r = widget.request!;
-      title = r.description.isEmpty ? '진행 중인 심부름' : r.description;
+      title = r.description.isEmpty ? '진행 중인 ○○' : r.description;
       reward = r.reward;
       dist = '—';
       eta = r.estimatedTaskMinutes > 0 ? '약 ${r.estimatedTaskMinutes}분' : '—';
@@ -111,7 +111,7 @@ class _LiveMissionCardState extends State<LiveMissionCard> {
     } else {
       final n = widget.notification!;
       final req = n.request;
-      title = req?.description.isNotEmpty == true ? req!.description : '주변 심부름';
+      title = req?.description.isNotEmpty == true ? req!.description : '주변 ○○';
       reward = req?.reward ?? 0;
       dist = n.distanceKm == null
           ? '—'

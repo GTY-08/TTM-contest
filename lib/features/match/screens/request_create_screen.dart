@@ -317,7 +317,7 @@ class _RequestCreateScreenState extends ConsumerState<RequestCreateScreen> {
       return;
     }
     if (_taskType == null || !_taskOptionsConfirmed) {
-      _snack('심부름 유형과 유형별 조건을 먼저 확인해 주세요.');
+      _snack('○○ 유형과 유형별 조건을 먼저 확인해 주세요.');
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -699,7 +699,7 @@ class _RequestCreateScreenState extends ConsumerState<RequestCreateScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? '게시글 수정' : (_step == 0 ? '심부름 요청' : '위치와 시간')),
+        title: Text(_isEditing ? '게시글 수정' : (_step == 0 ? '○○ 요청' : '위치와 시간')),
         scrolledUnderElevation: 0,
         leading: _step == 0
             ? null
@@ -812,7 +812,7 @@ class _RequestCreateScreenState extends ConsumerState<RequestCreateScreen> {
             const SizedBox(height: TtmSpacing.xl),
           ],
           if (_matchingMode != null || _isEditing) ...[
-            _SectionTitle('심부름 유형'),
+            _SectionTitle('○○ 유형'),
             const SizedBox(height: TtmSpacing.sm),
             Wrap(
               spacing: TtmSpacing.sm,
@@ -887,7 +887,7 @@ class _RequestCreateScreenState extends ConsumerState<RequestCreateScreen> {
               ),
               const SizedBox(height: TtmSpacing.xl),
             ],
-            _SectionTitle(_isGeneral ? '제안 심부름비' : '보상'),
+            _SectionTitle(_isGeneral ? '제안 ○○비' : '보상'),
             const SizedBox(height: TtmSpacing.md),
             TextFormField(
               controller: _rewardCtl,
@@ -908,7 +908,7 @@ class _RequestCreateScreenState extends ConsumerState<RequestCreateScreen> {
             if (_isGeneral) ...[
               const SizedBox(height: TtmSpacing.sm),
               Text(
-                '작업자와 채팅을 통해 최종 심부름비를 조절할 수 있어요.',
+                '작업자와 채팅을 통해 최종 ○○비를 조절할 수 있어요.',
                 style: TtmTypography.body.copyWith(
                   fontSize: 13,
                   height: 1.35,

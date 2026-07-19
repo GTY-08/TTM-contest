@@ -63,12 +63,12 @@ class ActiveErrandService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_ttm)
             .setColor(Color.parseColor("#2EA86A"))
-            .setContentTitle("진행 중 심부름")
+            .setContentTitle("진행 중 ○○")
             .setContentText("$stageLabel  ·  ${workerName}님$ratingStr")
             .setSubText(title)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .setBigContentTitle("진행 중 심부름")
+                    .setBigContentTitle("진행 중 ○○")
                     .bigText("$stages\n${workerName}님$ratingStr  ·  $title  ·  $rewardStr"),
             )
             .setContentIntent(launchPi)
@@ -105,10 +105,10 @@ class ActiveErrandService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "진행 중 심부름",
+                "진행 중 ○○",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "현재 진행 중인 심부름 상태를 표시합니다"
+                description = "현재 진행 중인 ○○ 상태를 표시합니다"
                 setShowBadge(false)
             }
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)

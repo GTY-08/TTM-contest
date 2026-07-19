@@ -37,7 +37,7 @@ class TtmDenseTaskCard extends StatelessWidget {
     final req = notification.request;
     final title = req?.description.isNotEmpty == true
         ? req!.description
-        : '주변 심부름';
+        : '주변 ○○';
     final reward = req?.rewardLabel(suffix: '') ?? '?';
     final eta = notification.etaMinutes == null
         ? '—'
