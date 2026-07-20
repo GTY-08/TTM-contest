@@ -275,12 +275,10 @@ begin
               when 'fitness' then '기초 체력 운동'
               else v_exercise
             end,
-            format(
-              '예상 참여 %.2f명 · 후보 %s명 · 시간대 성공률 %.0f%%',
-              v_expected,
-              v_potential,
-              v_slot_success * 100
-            ),
+            '예상 참여 ' || round(v_expected, 2)::text
+              || '명 · 후보 ' || v_potential::text
+              || '명 · 시간대 성공률 '
+              || round(v_slot_success * 100)::text || '%',
             v_starts,
             v_venue.default_duration_minutes,
             v_min_participants,
